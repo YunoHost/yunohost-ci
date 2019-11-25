@@ -12,7 +12,6 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 rebuild_base_container()
 {
-	set -x
 	lxc info $CONTAINER_ID-rebuild >/dev/null && sudo lxc delete $CONTAINER_ID-rebuild --force
 	lxc launch images:debian/stretch/amd64 $CONTAINER_ID-rebuild
 	lxc config set $CONTAINER_ID-rebuild security.privileged true
@@ -24,10 +23,11 @@ rebuild_base_container()
 	lxc exec $CONTAINER_ID-rebuild -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
 	lxc stop $CONTAINER_ID-rebuild
 	lxc publish $CONTAINER_ID-rebuild --alias $CONTAINER_ID-base
-	set +x
 }
 
 start_container () {
+	set -x
+
 	if ! lxc image info "$CONTAINER_ID-base" &>/dev/null
 	then
 		rebuild_base_container
@@ -46,6 +46,8 @@ start_container () {
 
 	lxc restore "$CONTAINER_ID" "$SNAPSHOT_NAME"
 	lxc start "$CONTAINER_ID" 2>/dev/null || true
+	
+	set +x
 
 	# Wait for container to start, we are using systemd to check this,
 	# for the sake of brevity.
