@@ -29,6 +29,26 @@ clean_containers()
 	done
 }
 
+wait_container()
+{
+	# Wait for container to start, we are using systemd to check this,
+	# for the sake of brevity.
+	for i in $(seq 1 10); do
+		if lxc exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+			break
+		fi
+
+		if [ "$i" == "10" ]; then
+			echo 'Waited for 10 seconds to start container, exiting..'
+			# Inform GitLab Runner that this is a system failure, so it
+			# should be retried.
+			exit "$SYSTEM_FAILURE_EXIT_CODE"
+		fi
+
+		sleep 1s
+	done
+}
+
 rebuild_base_container()
 {
 	clean_containers
@@ -45,6 +65,7 @@ rebuild_base_container()
 	# Create image before install
 	lxc publish "yunohost-$DEBIAN_VERSION-tmp" --alias "yunohost-$DEBIAN_VERSION-before-install"
 	lxc start "yunohost-$DEBIAN_VERSION-tmp"
+	wait_container "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Install yunohost
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
@@ -53,6 +74,7 @@ rebuild_base_container()
 	# Create image before postinstall
 	lxc publish "yunohost-$DEBIAN_VERSION-tmp" --alias "yunohost-$DEBIAN_VERSION-before-postinstall"
 	lxc start "yunohost-$DEBIAN_VERSION-tmp"
+	wait_container "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Running post Install
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
@@ -81,22 +103,7 @@ start_container () {
 	
 	set +x
 
-	# Wait for container to start, we are using systemd to check this,
-	# for the sake of brevity.
-	for i in $(seq 1 10); do
-		if lxc exec "$CONTAINER_ID" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
-			break
-		fi
-
-		if [ "$i" == "10" ]; then
-			echo 'Waited for 10 seconds to start container, exiting..'
-			# Inform GitLab Runner that this is a system failure, so it
-			# should be retried.
-			exit "$SYSTEM_FAILURE_EXIT_CODE"
-		fi
-
-		sleep 1s
-	done
+	wait_container $CONTAINER_ID
 }
 
 echo "Running in $CONTAINER_ID"
