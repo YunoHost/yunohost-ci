@@ -12,40 +12,52 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 rebuild_base_container()
 {
-	lxc info $CONTAINER_ID-rebuild >/dev/null && sudo lxc delete $CONTAINER_ID-rebuild --force
-	lxc launch images:debian/stretch/amd64 $CONTAINER_ID-rebuild
-	lxc config set $CONTAINER_ID-rebuild security.privileged true
-	lxc restart $CONTAINER_ID-rebuild
-	lxc exec $CONTAINER_ID-rebuild -- apt install curl -y
+	lxc info "yunohost-$DEBIAN_VERSION" >/dev/null && lxc delete "yunohost-$DEBIAN_VERSION" --force
+	lxc launch images:debian/$DEBIAN_VERSION/amd64 "yunohost-$DEBIAN_VERSION-tmp"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install curl -y"
+	# Install Git LFS, git comes pre installed with ubuntu image.
+    lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+    lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install git-lfs -y"
 	# Install gitlab-runner binary since we need for cache/artifacts.
-	lxc exec $CONTAINER_ID-rebuild -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
+	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
+
+	# Create image before install
+	lxc publish "yunohost-$DEBIAN_VERSION-tmp" --alias "yunohost-$DEBIAN_VERSION-before-install"
+	lxc start "yunohost-$DEBIAN_VERSION-tmp"
+
 	# Install yunohost
-	lxc exec $CONTAINER_ID-rebuild -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
-	lxc stop $CONTAINER_ID-rebuild
-	lxc publish $CONTAINER_ID-rebuild --alias $CONTAINER_ID-base
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
+	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
+
+	# Create image before postinstall
+	lxc publish "yunohost-$DEBIAN_VERSION-tmp" --alias "yunohost-$DEBIAN_VERSION-before-postinstall"
+	lxc start "yunohost-$DEBIAN_VERSION-tmp"
+
+	# Running post Install
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
+	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
+
+	# Create image after postinstall
+	lxc publish "yunohost-$DEBIAN_VERSION-tmp" --alias "yunohost-$DEBIAN_VERSION-after-postinstall"
+
+	lxc delete "yunohost-$DEBIAN_VERSION-tmp"
 }
 
 start_container () {
 	set -x
 
-	if ! lxc image info "$CONTAINER_ID-base" &>/dev/null
+    if lxc info "$CONTAINER_ID" >/dev/null 2>/dev/null ; then
+        echo 'Found old container, deleting'
+        lxc delete -f "$CONTAINER_ID"
+    fi
+
+	if ! lxc image info "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME" &>/dev/null
 	then
 		rebuild_base_container
 	fi
-	if ! lxc info $CONTAINER_ID | grep -q "before-postinstall"
-	then
-		lxc launch "$CONTAINER_ID-base" "$CONTAINER_ID"
-		lxc config set "$CONTAINER_ID" security.privileged true
-		lxc snapshot "$CONTAINER_ID" "before-postinstall"
-	fi
-	if ! lxc info $CONTAINER_ID | grep -q "after-postinstall"
-	then
-		lxc exec "$CONTAINER_ID" -- sh -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
-		lxc snapshot "$CONTAINER_ID" "after-postinstall"
-	fi
-
-	lxc restore "$CONTAINER_ID" "$SNAPSHOT_NAME"
-	lxc start "$CONTAINER_ID" 2>/dev/null || true
+	
+	lxc launch "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
 	
 	set +x
 
