@@ -12,7 +12,7 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 clean_containers()
 {
-	for image_to_delete in "yunohost-$DEBIAN_VERSION yunohost-$DEBIAN_VERSION-tmp"
+	for image_to_delete in "yunohost-$DEBIAN_VERSION" "yunohost-$DEBIAN_VERSION-tmp"
 	do
 		if lxc info $image_to_delete &>/dev/null
 		then
@@ -20,7 +20,7 @@ clean_containers()
 		fi
 	done
 
-	for image_to_delete in "yunohost-$DEBIAN_VERSION-before-install yunohost-$DEBIAN_VERSION-before-postinstall yunohost-$DEBIAN_VERSION-after-postinstall"
+	for image_to_delete in "yunohost-$DEBIAN_VERSION-before-install" "yunohost-$DEBIAN_VERSION-before-postinstall" "yunohost-$DEBIAN_VERSION-after-postinstall"
 	do
 		if lxc image info $image_to_delete &>/dev/null
 		then
@@ -34,12 +34,12 @@ rebuild_base_container()
 	clean_containers
 
 	lxc launch images:debian/$DEBIAN_VERSION/amd64 "yunohost-$DEBIAN_VERSION-tmp"
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install curl -y"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "apt-get install curl -y"
 	# Install Git LFS, git comes pre installed with ubuntu image.
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install git-lfs -y"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "apt-get install git-lfs -y"
 	# Install gitlab-runner binary since we need for cache/artifacts.
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Create image before install
@@ -47,7 +47,7 @@ rebuild_base_container()
 	lxc start "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Install yunohost
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d unstable"
 	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Create image before postinstall
@@ -55,7 +55,7 @@ rebuild_base_container()
 	lxc start "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Running post Install
-	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
 	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Create image after postinstall
@@ -84,7 +84,7 @@ start_container () {
 	# Wait for container to start, we are using systemd to check this,
 	# for the sake of brevity.
 	for i in $(seq 1 10); do
-		if lxc exec "$CONTAINER_ID" -- sh -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+		if lxc exec "$CONTAINER_ID" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
 			break
 		fi
 
