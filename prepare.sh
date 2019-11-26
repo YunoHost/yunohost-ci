@@ -10,14 +10,34 @@ set -eo pipefail
 # trap any error, and mark it as a system failure.
 trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
+clean_containers()
+{
+	for image_to_delete in "yunohost-$DEBIAN_VERSION yunohost-$DEBIAN_VERSION-tmp"
+	do
+		if lxc info $image_to_delete &>/dev/null
+		then
+			lxc delete $image_to_delete --force
+		fi
+	done
+
+	for image_to_delete in "yunohost-$DEBIAN_VERSION-before-install yunohost-$DEBIAN_VERSION-before-postinstall yunohost-$DEBIAN_VERSION-after-postinstall"
+	do
+		if lxc image info $image_to_delete &>/dev/null
+		then
+			lxc image delete $image_to_delete
+		fi
+	done
+}
+
 rebuild_base_container()
 {
-	lxc info "yunohost-$DEBIAN_VERSION" >/dev/null && lxc delete "yunohost-$DEBIAN_VERSION" --force
+	clean_containers
+
 	lxc launch images:debian/$DEBIAN_VERSION/amd64 "yunohost-$DEBIAN_VERSION-tmp"
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install curl -y"
 	# Install Git LFS, git comes pre installed with ubuntu image.
-    lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
-    lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install git-lfs -y"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "apt-get install git-lfs -y"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- sh -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
@@ -47,10 +67,10 @@ rebuild_base_container()
 start_container () {
 	set -x
 
-    if lxc info "$CONTAINER_ID" >/dev/null 2>/dev/null ; then
-        echo 'Found old container, deleting'
-        lxc delete -f "$CONTAINER_ID"
-    fi
+	if lxc info "$CONTAINER_ID" >/dev/null 2>/dev/null ; then
+		echo 'Found old container, deleting'
+		lxc delete -f "$CONTAINER_ID"
+	fi
 
 	if ! lxc image info "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME" &>/dev/null
 	then
