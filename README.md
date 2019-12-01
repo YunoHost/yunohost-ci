@@ -84,6 +84,7 @@ When you write `.gitlab-ci.yml` you can give some [variables](https://docs.gitla
 
 ## TODO
 
+- Support more YunoHost Core projects (for now only `yunohost` is supported, not `moulinette`...)
 - Add the possibility to select between arch (amd64, arm), for now only amd64 is available.
 - Be sure that the runner can run several jobs in parallel (The `rebuild_base_container` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
 - Update all lxc envs to keep them up-to-date.
