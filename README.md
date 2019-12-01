@@ -1,0 +1,90 @@
+# YunoHost-CI: Gitlab runner for YunoHost Core
+
+## Introduction
+`yunohost-ci` is a [custom executor](https://docs.gitlab.com/runner/executors/custom.html) for [Gitlab Runner](https://docs.gitlab.com/runner/).
+
+It uses LXD/LXC environment to run tests on YunoHost Core. Tests must be written in file [`.gitlab-ci.yml`](https://docs.gitlab.com/ee/ci/yaml/) on each YunoHost Core repository to test.
+
+## Setup `YunoHost-CI`
+
+First you need to install the system dependencies.
+
+`yunohost-ci` essentially requires Git and the LXD/LXC ecosystem. 
+
+For Gitlab Runner, you can find doc [here](https://docs.gitlab.com/runner/install/linux-repository.html). On Debian-based system, you can add GitLab’s official repository:
+```bash
+curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash
+```
+
+Then install Gitlab Runner (min version: 12.1):
+```bash
+sudo apt-get install gitlab-runner
+```
+
+Then, on a Debian-based system (regular Debian, Ubuntu, Mint ...), LXD can be installed using `snapd`. On other systems like Archlinux, you will probably also be able to install `snapd` using the system package manager (or even `lxd` directly).
+
+```bash
+sudo apt install git snapd
+sudo snap install lxd
+
+# Adding lxc/lxd to /usr/local/bin to make sure we can use them easily even
+# with sudo for which the PATH is defined in /etc/sudoers and probably doesn't
+# include /snap/bin
+sudo ln -s /snap/bin/lxc /usr/local/bin/lxc
+sudo ln -s /snap/bin/lxd /usr/local/bin/lxd
+```
+
+Then you shall initialize LXD which will ask you several questions. Usually answering the default (just pressing enter) to all questions is fine.
+
+```bash
+sudo lxd init
+```
+
+## Register `YunoHost-CI`
+
+To use this runner, you must register the Gitlab Runner that you just installed (you can register in on several projects, or on the group that contains all projects). But, you have to **disable the shared runner** to only use this runner and not "Official" that is using a docker executor.
+
+You can follow this [official doc](https://docs.gitlab.com/runner/register/) to register it. The only think to change is the point number 6, where you have to choose `custom`.
+
+After that, clone this repo where you want, and be sure that scripts `base.sh` `cleanup.sh` `prepare.sh` and `run.sh` have the execution permission.
+
+Finally, edit the file `/etc/gitlab-runner/config.toml` to add `builds_dir`, `cache_dir`, and all the `[runners.custom]` section. Your file should looks like this:
+
+```toml
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "yunohost-ci"
+  url = "https://gitlab.com/" # Gitlab URL
+  token = "[SECRET-TOKEN]" # Very private token
+  executor = "custom"
+  builds_dir = "/builds" # Will be created if doesn't exist
+  cache_dir = "/cache" # Will be created if doesn't exist
+  [runners.custom]
+    prepare_exec = "/opt/yunohost-ci/prepare.sh" # Path to a bash script to create lxd container and download dependencies.
+    run_exec = "/opt/yunohost-ci/run.sh" # Path to a bash script to run script inside the container.
+    cleanup_exec = "/opt/yunohost-ci/cleanup.sh" # Path to bash script to delete container.
+```
+
+## Using variables
+
+When you write `.gitlab-ci.yml` you can give some [variables](https://docs.gitlab.com/ee/ci/variables/#via-gitlab-ciyml) to the runner:
+
+- SNAPSHOT_NAME (By default `after-postinstall`): You can choose to run test on different environments:
+  * Before the installation of YunoHost: `before-install`
+  * Before the postinstall of YunoHost: `before-postinstall`
+  * After the postinstall of YunoHost: `after-postinstall`
+- DEBIAN_VERSION (By default `stretch`): You can choose on which debian version you want to run your tests
+  * Stretch: `stretch`
+  * Buster: `buster`
+
+## TODO
+
+- Add the possibility to select between arch (amd64, arm), for now only amd64 is available.
+- Be sure that the runner can run several jobs in parallel (The `rebuild_base_container` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
+- Update all lxc envs to keep them up-to-date.
+- Git pull this repo before running tests to keep these files up-to-date.
