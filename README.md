@@ -70,17 +70,12 @@ check_interval = 0
     cleanup_exec = "/opt/yunohost-ci/cleanup.sh" # Path to bash script to delete container.
 ```
 
-## Using variables
+## Using images
 
-When you write `.gitlab-ci.yml` you can give some [variables](https://docs.gitlab.com/ee/ci/variables/#via-gitlab-ciyml) to the runner:
-
-- SNAPSHOT_NAME (By default `after-postinstall`): You can choose to run test on different environments:
-  * Before the installation of YunoHost: `before-install`
-  * Before the postinstall of YunoHost: `before-postinstall`
-  * After the postinstall of YunoHost: `after-postinstall`
-- DEBIAN_VERSION (By default `stretch`): You can choose on which debian version you want to run your tests
-  * Stretch: `stretch`
-  * Buster: `buster`
+Use the field `image` to switch between debian versions (`stretch` by default) and between `before-install`, `before-postinstall` or `after-postinstall` (`after-postinstall` by default) for example:
+- `image: stretch:after-postinstall` to use the stretch image after the postinstall ofr Yunohost
+- `image: buster:before-install` to use the buster image before the installation of YunoHost
+- `...`
 
 ## TODO
 
