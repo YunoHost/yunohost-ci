@@ -60,6 +60,7 @@ rebuild_base_container()
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "apt-get install git-lfs -y"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
+	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "apt-get install gitlab-runner -y"
 	lxc stop "yunohost-$DEBIAN_VERSION-tmp"
 
 	# Create image before install
