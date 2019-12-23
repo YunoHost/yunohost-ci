@@ -102,6 +102,10 @@ start_container () {
 	
 	lxc launch "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
 	
+	mkdir -p ${currentDir}/cache
+	chmod 777 ${currentDir}/cache
+	lxc config device add "$CONTAINER_ID" cache-folder disk path=/cache source="${currentDir}/cache"
+
 	set +x
 
 	wait_container $CONTAINER_ID
