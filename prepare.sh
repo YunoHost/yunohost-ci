@@ -87,6 +87,24 @@ rebuild_base_container()
 	lxc delete "yunohost-$DEBIAN_VERSION-tmp"
 }
 
+update_image() {
+	image_to_update=$1
+
+	# Start and run upgrade
+	lxc launch "$image_to_update" "$image_to_update-tmp"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade -y"
+	lxc stop "$image_to_update-tmp"
+
+	# Remove old image
+	lxc image delete "$image_to_update"
+
+	# Add new image updated
+	lxc publish "$image_to_update-tmp" --alias "$image_to_update"
+
+	lxc delete "$image_to_update-tmp"
+}
+
 start_container () {
 	set -x
 
@@ -99,9 +117,11 @@ start_container () {
 	then
 		rebuild_base_container
 	fi
-	
+
+	update_image "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME"
+
 	lxc launch "yunohost-$DEBIAN_VERSION-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
-	
+
 	mkdir -p ${currentDir}/cache
 	chmod 777 ${currentDir}/cache
 	lxc config device add "$CONTAINER_ID" cache-folder disk path=/cache source="${currentDir}/cache"
