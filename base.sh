@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# All Variables here: https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference, strating with CUSTOM_ENV_
 #CUSTOM_ENV_CI_DEFAULT_BRANCH=stretch-unstable
 #CUSTOM_ENV_CI_JOB_NAME=build1
 #CUSTOM_ENV_CI_BUILD_STAGE=pre-postinstall
