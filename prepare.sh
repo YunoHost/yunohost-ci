@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# /opt/lxd-executor/prepare.sh
-
 currentDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${currentDir}/base.sh # Get variables from base.
 
@@ -12,7 +10,7 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 clean_containers()
 {
-	for image_to_delete in "yunohost-$DEBIAN_VERSION" "yunohost-$DEBIAN_VERSION-tmp"
+	for image_to_delete in "yunohost-$DEBIAN_VERSION"{,"-tmp"}
 	do
 		if lxc info $image_to_delete &>/dev/null
 		then
@@ -20,7 +18,7 @@ clean_containers()
 		fi
 	done
 
-	for image_to_delete in "yunohost-$DEBIAN_VERSION-before-install" "yunohost-$DEBIAN_VERSION-before-postinstall" "yunohost-$DEBIAN_VERSION-after-postinstall"
+	for image_to_delete in "yunohost-$DEBIAN_VERSION-"{"before-install","before-postinstall","after-postinstall"}
 	do
 		if lxc image info $image_to_delete &>/dev/null
 		then
@@ -53,7 +51,7 @@ rebuild_base_container()
 {
 	clean_containers
 
-	lxc launch images:debian/$DEBIAN_VERSION/amd64 "yunohost-$DEBIAN_VERSION-tmp"
+	lxc launch images:debian/$DEBIAN_VERSION/$ARCH "yunohost-$DEBIAN_VERSION-tmp"
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "apt-get install curl -y"
 	# Install Git LFS, git comes pre installed with ubuntu image.
 	lxc exec "yunohost-$DEBIAN_VERSION-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
