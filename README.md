@@ -72,15 +72,13 @@ check_interval = 0
 
 ## Using images
 
-Use the field `image` to switch between debian versions (`stretch` by default) and between `before-install`, `before-postinstall` or `after-postinstall` (`after-postinstall` by default) for example:
-- `image: stretch:after-postinstall` to use the stretch image after the postinstall ofr Yunohost
-- `image: buster:before-install` to use the buster image before the installation of YunoHost
+Use the field `image` to switch between `before-install`, `before-postinstall` or `after-postinstall` (`after-postinstall` by default) for example:
+- `image: after-postinstall` to use the image after the postinstall of Yunohost
+- `image: before-install` to use the image before the installation of YunoHost
 - `...`
 
 ## TODO
 
 - Support more YunoHost Core projects (for now only `yunohost` is supported, not `moulinette`...)
-- Add the possibility to select between arch (amd64, arm), for now only amd64 is available.
 - Be sure that the runner can run several jobs in parallel (The `rebuild_base_container` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
-- Update all lxc envs to keep them up-to-date.
 - Git pull this repo before running tests to keep these files up-to-date.
