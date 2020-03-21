@@ -15,7 +15,10 @@ create_sym_link() {
 link_moulinette_from_git() {
 	moulinette_dir="/tmp/ci_moulinette"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $moulinette_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/moulinette -b $CURRENT_BRANCH $moulinette_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/moulinette $moulinette_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "pushd $moulinette_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "if git ls-remote --heads | grep -q $CURRENT_BRANCH; then git checkout $CURRENT_BRANCH; else git checkout $DEFAULT_BRANCH; fi"
+	lxc exec "$CONTAINER_ID" -- sh -c "popd"
 
 	create_sym_link "$moulinette_dir/locales" "/usr/share/moulinette/locale"
 	create_sym_link "$moulinette_dir/moulinette" "/usr/lib/python2.7/dist-packages/moulinette"
@@ -24,7 +27,10 @@ link_moulinette_from_git() {
 link_ssowat_from_git() {
 	ssowat_dir="/tmp/ci_ssowat"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $ssowat_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/ssowat -b $CURRENT_BRANCH $ssowat_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/ssowat $ssowat_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "pushd $ssowat_dir"
+	lxc exec "$CONTAINER_ID" -- sh -c "if git ls-remote --heads | grep -q $CURRENT_BRANCH; then git checkout $CURRENT_BRANCH; else git checkout $DEFAULT_BRANCH; fi"
+	lxc exec "$CONTAINER_ID" -- sh -c "popd"
 
 	create_sym_link "$ssowat_dir" "/usr/share/ssowat"
 }
@@ -41,6 +47,7 @@ case ${2} in
 	build_script)
 		case $PROJECT_NAME in
 			yunohost)
+				set -x
 				# bin
 				create_sym_link "$PROJECT_DIR/bin/yunohost" "/usr/bin/yunohost"
 				create_sym_link "$PROJECT_DIR/bin/yunohost-api" "/usr/bin/yunohost-api"
@@ -73,6 +80,7 @@ case ${2} in
 
 				# ssowat
 				link_ssowat_from_git
+				set +x
 			;;
 		esac
 		;;
