@@ -16,9 +16,13 @@ link_moulinette_from_git() {
 	moulinette_dir="/tmp/ci_moulinette"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $moulinette_dir"
 	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/moulinette $moulinette_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "pushd $moulinette_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "if git ls-remote --heads | grep -q $CURRENT_BRANCH; then git checkout $CURRENT_BRANCH; else git checkout $DEFAULT_BRANCH; fi"
-	lxc exec "$CONTAINER_ID" -- sh -c "popd"
+	lxc exec "$CONTAINER_ID" -- sh -c "(cd $moulinette_dir; \
+	if git ls-remote --heads | grep -q $CURRENT_BRANCH; \
+	then \
+		git checkout $CURRENT_BRANCH; \
+	else \
+		git checkout $DEFAULT_BRANCH; \
+	fi)"
 
 	create_sym_link "$moulinette_dir/locales" "/usr/share/moulinette/locale"
 	create_sym_link "$moulinette_dir/moulinette" "/usr/lib/python2.7/dist-packages/moulinette"
@@ -28,9 +32,13 @@ link_ssowat_from_git() {
 	ssowat_dir="/tmp/ci_ssowat"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $ssowat_dir"
 	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/ssowat $ssowat_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "pushd $ssowat_dir"
-	lxc exec "$CONTAINER_ID" -- sh -c "if git ls-remote --heads | grep -q $CURRENT_BRANCH; then git checkout $CURRENT_BRANCH; else git checkout $DEFAULT_BRANCH; fi"
-	lxc exec "$CONTAINER_ID" -- sh -c "popd"
+	lxc exec "$CONTAINER_ID" -- sh -c "(cd $ssowat_dir; \
+	if git ls-remote --heads | grep -q $CURRENT_BRANCH; \
+	then \
+		git checkout $CURRENT_BRANCH; \
+	else \
+		git checkout $DEFAULT_BRANCH; \
+	fi)"
 
 	create_sym_link "$ssowat_dir" "/usr/share/ssowat"
 }
