@@ -10,7 +10,7 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 clean_containers()
 {
-	for image_to_delete in "yunohost-$DEBIAN_VERSION-"{"stable","testing","unstable"}""{,"-tmp"}
+	for image_to_delete in "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION"{,"-tmp"}
 	do
 		if lxc info $image_to_delete &>/dev/null
 		then
@@ -18,7 +18,7 @@ clean_containers()
 		fi
 	done
 
-	for image_to_delete in "yunohost-$DEBIAN_VERSION-"{"stable","testing","unstable"}"-"{"before-install","before-postinstall","after-postinstall"}
+	for image_to_delete in "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-"{"before-install","before-postinstall","after-postinstall"}
 	do
 		if lxc image info $image_to_delete &>/dev/null
 		then
