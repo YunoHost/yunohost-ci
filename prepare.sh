@@ -52,6 +52,10 @@ rebuild_base_container()
 	clean_containers
 
 	lxc launch images:debian/$DEBIAN_VERSION/$ARCH "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-tmp"
+	
+	wait_container "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-tmp"
+
+	lxc exec "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-tmp" -- /bin/bash -c "apt-get install curl -y"
 	# Install Git LFS, git comes pre installed with ubuntu image.
 	lxc exec "yunohost-$DEBIAN_VERSION-$CURRENT_VERSION-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
@@ -90,6 +94,9 @@ update_image() {
 
 	# Start and run upgrade
 	lxc launch "$image_to_update" "$image_to_update-tmp"
+	
+	wait_container "$image_to_update-tmp"
+
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade -y"
 	lxc stop "$image_to_update-tmp"
