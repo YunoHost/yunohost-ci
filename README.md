@@ -80,5 +80,5 @@ Use the field `image` to switch between `before-install`, `before-postinstall` o
 ## TODO
 
 - Support more YunoHost Core projects (for now only `yunohost` is supported, not `moulinette`...)
-- Be sure that the runner can run several jobs in parallel (The `rebuild_base_container` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
+- Be sure that the runner can run several jobs in parallel (The `rebuild_base_containers` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
 - Git pull this repo before running tests to keep these files up-to-date.

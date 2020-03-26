@@ -1,0 +1,2 @@
+# Upgrade all continers
+30 2 * * * root "/opt/yunohost-ciyunohost/auto_upgrade_container.sh"
