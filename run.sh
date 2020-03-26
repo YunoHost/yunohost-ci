@@ -13,6 +13,8 @@ create_sym_link() {
 }
 
 link_moulinette_from_git() {
+	echo "Moulinette: using the $CURRENT_BRANCH branch if it exists, $DEFAULT_BRANCH otherwise"
+
 	moulinette_dir="/tmp/ci_moulinette"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $moulinette_dir"
 	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/moulinette $moulinette_dir"
@@ -29,6 +31,8 @@ link_moulinette_from_git() {
 }
 
 link_ssowat_from_git() {
+	echo "SSOWAT: using the $CURRENT_BRANCH branch if it exists, $DEFAULT_BRANCH otherwise"
+
 	ssowat_dir="/tmp/ci_ssowat"
 	lxc exec "$CONTAINER_ID" -- sh -c "mkdir $ssowat_dir"
 	lxc exec "$CONTAINER_ID" -- sh -c "git clone https://github.com/YunoHost/ssowat $ssowat_dir"
@@ -55,7 +59,8 @@ case ${2} in
 	build_script)
 		case $PROJECT_NAME in
 			yunohost)
-				set -x
+				echo "Link yunohost"
+
 				# bin
 				create_sym_link "$PROJECT_DIR/bin/yunohost" "/usr/bin/yunohost"
 				create_sym_link "$PROJECT_DIR/bin/yunohost-api" "/usr/bin/yunohost-api"
@@ -88,7 +93,6 @@ case ${2} in
 
 				# ssowat
 				link_ssowat_from_git
-				set +x
 			;;
 		esac
 		;;

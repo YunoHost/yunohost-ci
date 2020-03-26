@@ -10,8 +10,6 @@ set -eo pipefail
 trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 start_container () {
-	set -x
-
 	if lxc info "$CONTAINER_ID" >/dev/null 2>/dev/null ; then
 		echo 'Found old container, deleting'
 		lxc delete -f "$CONTAINER_ID"
@@ -30,8 +28,6 @@ start_container () {
 	mkdir -p $current_dir/cache
 	chmod 777 $current_dir/cache
 	lxc config device add "$CONTAINER_ID" cache-folder disk path=/cache source="$current_dir/cache"
-
-	set +x
 
 	wait_container $CONTAINER_ID
 }
