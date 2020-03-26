@@ -25,8 +25,6 @@ start_container () {
 		exit $SYSTEM_FAILURE_EXIT_CODE
 	fi
 
-	update_image "$BASE_IMAGE-$SNAPSHOT_NAME"
-
 	lxc launch "$BASE_IMAGE-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
 
 	mkdir -p $current_dir/cache
