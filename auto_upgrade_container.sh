@@ -7,7 +7,7 @@ do
     do
         for snapshot in "before-install" "before-postinstall" "after-postinstall"
         do
-            local image="yunohost-$debian_version-$ynh_version-$snapshot"
+            image="yunohost-$debian_version-$ynh_version-$snapshot"
 
             update_image $image
         done

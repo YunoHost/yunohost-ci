@@ -5,8 +5,8 @@ for debian_version in "stretch" "buster"
 do
     for ynh_version in "stable" "testing" "unstable"
     do
-        local base_image="yunohost-$debian_version-$ynh_version"
+        base_image="yunohost-$debian_version-$ynh_version"
 
-        rebuild_base_containers $BASE_IMAGE
+        rebuild_base_containers $base_image
     done
 done
