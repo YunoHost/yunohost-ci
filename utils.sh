@@ -11,7 +11,7 @@ clean_containers()
 	do
 		if lxc info $image_to_delete &>/dev/null
 		then
-			lxc delete $base_image_to_clean --force
+			lxc delete $image_to_delete --force
 		fi
 	done
 
@@ -46,10 +46,14 @@ wait_container()
 
 rebuild_base_containers()
 {
-    local base_image_to_rebuild=$1
+    local debian_version=$1
+    local ynh_version=$2
+    local arch=$3
+    local base_image_to_rebuild="yunohost-$debian_version-$ynh_version"
+    
 	clean_containers $base_image_to_rebuild
 
-	lxc launch images:debian/$DEBIAN_VERSION/$ARCH "$base_image_to_rebuild-tmp"
+	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild-tmp"
 	
 	wait_container "$base_image_to_rebuild-tmp"
 
@@ -70,7 +74,7 @@ rebuild_base_containers()
 	wait_container "$base_image_to_rebuild-tmp"
 
 	# Install yunohost
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d $CURRENT_VERSION"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d $ynh_version"
 	lxc stop "$base_image_to_rebuild-tmp"
 
 	# Create image before postinstall
