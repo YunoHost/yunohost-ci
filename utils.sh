@@ -73,8 +73,14 @@ rebuild_base_containers()
 
 	wait_container "$base_image_to_rebuild-tmp"
 
+    if [[ "$debian_version" == "buster" ]]
+    then
+        INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/buster-unstable/install_yunohost"
+    else
+        INSTALL_SCRIPT="https://install.yunohost.org"
+    fi
 	# Install yunohost
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl https://install.yunohost.org | bash -s -- -a -d $ynh_version"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
 	lxc stop "$base_image_to_rebuild-tmp"
 
 	# Create image before postinstall
