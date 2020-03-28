@@ -44,14 +44,40 @@ wait_container()
 	done
 }
 
+rotate_image()
+{
+	local instance_to_publish=$1
+	local alias_image=$2
+
+	# Save the finger print to delete the old image later 
+    local finger_print_to_delete=$(lxc image info "$alias_image" | grep Fingerprint | awk '{print $2}')
+	local should_restart=0
+
+	# If the container is running, stop it
+	if [ $(lxc info $instance_to_publish | grep Status | awk '{print $2}') = "Running" ]
+	then
+		should_restart=1
+		lxc stop "$instance_to_publish"
+	fi
+
+	# Create image before install
+	lxc publish "$instance_to_publish" --alias "$alias_image"
+	# Remove old image
+	lxc image delete "$finger_print_to_delete"
+	
+	if [ $should_restart = 1 ]
+	then
+		lxc start "$instance_to_publish"
+	fi
+}
+
+
 rebuild_base_containers()
 {
     local debian_version=$1
     local ynh_version=$2
     local arch=$3
     local base_image_to_rebuild="yunohost-$debian_version-$ynh_version"
-    
-	clean_containers $base_image_to_rebuild
 
 	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild-tmp"
 	
@@ -65,11 +91,8 @@ rebuild_base_containers()
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install gitlab-runner -y"
-	lxc stop "$base_image_to_rebuild-tmp"
 
-	# Create image before install
-	lxc publish "$base_image_to_rebuild-tmp" --alias "$base_image_to_rebuild-before-install"
-	lxc start "$base_image_to_rebuild-tmp"
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
 
 	wait_container "$base_image_to_rebuild-tmp"
 
@@ -81,21 +104,18 @@ rebuild_base_containers()
     fi
 	# Install yunohost
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
-	lxc stop "$base_image_to_rebuild-tmp"
 
-	# Create image before postinstall
-	lxc publish "$base_image_to_rebuild-tmp" --alias "$base_image_to_rebuild-before-postinstall"
-	lxc start "$base_image_to_rebuild-tmp"
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-postinstall"
 
 	wait_container "$base_image_to_rebuild-tmp"
 
 	# Running post Install
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
+
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-postinstall"
+
 	lxc stop "$base_image_to_rebuild-tmp"
-
-	# Create image after postinstall
-	lxc publish "$base_image_to_rebuild-tmp" --alias "$base_image_to_rebuild-after-postinstall"
-
+	
 	lxc delete "$base_image_to_rebuild-tmp"
 }
 
@@ -108,8 +128,6 @@ update_image() {
         return
     fi
 
-    local finger_print_to_delete=$(lxc image info "$image_to_update" | grep Fingerprint | cut -d' ' -f2)
-
 	# Start and run upgrade
 	lxc launch "$image_to_update" "$image_to_update-tmp"
 	
@@ -117,13 +135,10 @@ update_image() {
 
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade -y"
+
+	rotate_image "$image_to_update-tmp" "$image_to_update"
+
 	lxc stop "$image_to_update-tmp"
-
-	# Add new image updated
-	lxc publish "$image_to_update-tmp" --alias "$image_to_update"
-
-	# Remove old image
-	lxc image delete "$finger_print_to_delete"
 
 	lxc delete "$image_to_update-tmp"
 }
