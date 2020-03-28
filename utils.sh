@@ -68,6 +68,7 @@ rotate_image()
 	if [ $should_restart = 1 ]
 	then
 		lxc start "$instance_to_publish"
+		wait_container "$instance_to_publish"
 	fi
 }
 
@@ -94,8 +95,6 @@ rebuild_base_containers()
 
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
 
-	wait_container "$base_image_to_rebuild-tmp"
-
     if [[ "$debian_version" == "buster" ]]
     then
         INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/buster-unstable/install_yunohost"
@@ -107,15 +106,13 @@ rebuild_base_containers()
 
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-postinstall"
 
-	wait_container "$base_image_to_rebuild-tmp"
-
 	# Running post Install
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
 
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-postinstall"
 
 	lxc stop "$base_image_to_rebuild-tmp"
-	
+
 	lxc delete "$base_image_to_rebuild-tmp"
 }
 
