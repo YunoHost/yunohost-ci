@@ -24,6 +24,7 @@ start_container () {
 	fi
 
 	lxc launch "$BASE_IMAGE-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
+	lxc config set "$CONTAINER_ID" security.nesting true
 
 	mkdir -p $current_dir/cache
 	chmod 777 $current_dir/cache
