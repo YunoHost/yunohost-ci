@@ -45,6 +45,8 @@ link_ssowat_from_git() {
 	fi)"
 
 	create_sym_link "$ssowat_dir" "/usr/share/ssowat"
+
+	lxc exec "$CONTAINER_ID" -- sh -c "systemctl reload nginx"
 }
 
 case ${2} in
