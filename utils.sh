@@ -84,6 +84,11 @@ rebuild_base_containers()
 	
 	wait_container "$base_image_to_rebuild-tmp"
 
+	if [[ "$debian_version" == "buster" ]]
+    then
+        lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
+    fi
+
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install curl -y"
 	# Install Git LFS, git comes pre installed with ubuntu image.
