@@ -95,6 +95,9 @@ case ${2} in
 
 				# ssowat
 				link_ssowat_from_git
+
+				# Run migrations
+				lxc exec "$CONTAINER_ID" -- sh -c "yunohost tools migrations migrate"
 			;;
 		esac
 		;;
