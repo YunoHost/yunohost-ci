@@ -42,6 +42,23 @@ wait_container()
 
 		sleep 1s
 	done
+
+	# Wait for container to access the internet
+	for i in $(seq 1 10); do
+		if lxc exec "$1" -- /bin/bash -c "ping -q -c 2 security.debian.org" >/dev/null 2>/dev/null; then
+			break
+		fi
+
+		if [ "$i" == "10" ]; then
+			echo 'Waited for 10 seconds to access the internet, restarting..'
+			lxc stop "$1"
+			lxc start "$1"
+
+			wait_container "$1"
+		fi
+
+		sleep 1s
+	done
 }
 
 rotate_image()
