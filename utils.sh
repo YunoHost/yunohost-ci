@@ -26,38 +26,66 @@ clean_containers()
 
 wait_container()
 {
-	# Wait for container to start, we are using systemd to check this,
-	# for the sake of brevity.
-	for i in $(seq 1 10); do
-		if lxc exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+	restart_container()
+	{
+		lxc stop "$1"
+		lxc start "$1"
+	}
+
+	# Try to start the container 3 times.
+	local max_try=3
+	local i=0
+	while [ $i -lt $max_try ]
+	do
+		i=$(( i +1 ))
+		local failstart=0
+
+		# Wait for container to start, we are using systemd to check this,
+		# for the sake of brevity.
+		for j in $(seq 1 10); do
+			if lxc exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+				break
+			fi
+
+			if [ "$j" == "10" ]; then
+				echo 'Waited for 10 seconds to start container'
+				failstart=1
+
+				restart_container "$1"
+			fi
+
+			sleep 1s
+		done
+
+		# Wait for container to access the internet
+		for j in $(seq 1 10); do
+			if lxc exec "$1" -- /bin/bash -c "ping -q -c 2 security.debian.org" >/dev/null 2>/dev/null; then
+				break
+			fi
+
+			if [ "$j" == "10" ]; then
+				echo 'Waited for 10 seconds to access the internet'
+				failstart=1
+
+				restart_container "$1"
+			fi
+
+			sleep 1s
+		done
+
+		# Has started and has access to the internet
+		if [ $failstart -eq 0 ]
+		then
 			break
 		fi
 
-		if [ "$i" == "10" ]; then
-			echo 'Waited for 10 seconds to start container, exiting..'
+		# Fail if the container failed to start
+		if [ $i -eq $max_try ] && [ $failstart -eq 1 ]
+		then
 			# Inform GitLab Runner that this is a system failure, so it
 			# should be retried.
 			exit "$SYSTEM_FAILURE_EXIT_CODE"
 		fi
-
-		sleep 1s
-	done
-
-	# Wait for container to access the internet
-	for i in $(seq 1 10); do
-		if lxc exec "$1" -- /bin/bash -c "ping -q -c 2 security.debian.org" >/dev/null 2>/dev/null; then
-			break
-		fi
-
-		if [ "$i" == "10" ]; then
-			echo 'Waited for 10 seconds to access the internet, restarting..'
-			lxc stop "$1"
-			lxc start "$1"
-
-			wait_container "$1"
-		fi
-
-		sleep 1s
 	done
 }
 
