@@ -59,7 +59,7 @@ wait_container()
 
 		# Wait for container to access the internet
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "ping -q -c 2 security.debian.org" >/dev/null 2>/dev/null; then
+			if lxc exec "$1" -- /bin/bash -c "getent hosts debian.org" >/dev/null 2>/dev/null; then
 				break
 			fi
 
