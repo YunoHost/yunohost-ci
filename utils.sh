@@ -169,6 +169,8 @@ fi"
 	# Pre install dependencies
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
 
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U pip pytest pytest-sugar pytest-mock requests-mock mock"
+
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild"
 
 	lxc stop "$base_image_to_rebuild-tmp"
@@ -192,6 +194,8 @@ update_image() {
 
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade -y"
+
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U pip pytest pytest-sugar pytest-mock requests-mock mock"
 
 	rotate_image "$image_to_update-tmp" "$image_to_update"
 
