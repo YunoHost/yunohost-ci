@@ -168,8 +168,7 @@ fi"
 
 	# Pre install dependencies
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
-
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U pip pytest pytest-sugar pytest-mock requests-mock mock"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
 
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild"
 
@@ -193,9 +192,9 @@ update_image() {
 	wait_container "$image_to_update-tmp"
 
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
-	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade -y"
-
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U pip pytest pytest-sugar pytest-mock requests-mock mock"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade --assume-yes"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
 
 	rotate_image "$image_to_update-tmp" "$image_to_update"
 
