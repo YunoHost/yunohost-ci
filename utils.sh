@@ -5,7 +5,7 @@ source $current_dir/base.sh # Get variables from base.
 
 clean_containers()
 {
-    local base_image_to_clean=$1
+	local base_image_to_clean=$1
 
 	for image_to_delete in "$base_image_to_clean"{,"-tmp"}
 	do
@@ -15,13 +15,10 @@ clean_containers()
 		fi
 	done
 
-	for image_to_delete in "$base_image_to_clean-"{"before-install","before-postinstall","after-postinstall"}
-	do
-		if lxc image info $image_to_delete &>/dev/null
-		then
-			lxc image delete $image_to_delete
-		fi
-	done
+	if lxc image info $base_image_to_clean &>/dev/null
+	then
+		lxc image delete $base_image_to_clean
+	fi
 }
 
 wait_container()
@@ -95,7 +92,7 @@ rotate_image()
 	local alias_image=$2
 
 	# Save the finger print to delete the old image later 
-    local finger_print_to_delete=$(lxc image info "$alias_image" | grep Fingerprint | awk '{print $2}')
+	local finger_print_to_delete=$(lxc image info "$alias_image" | grep Fingerprint | awk '{print $2}')
 	local should_restart=0
 
 	# If the container is running, stop it
@@ -120,46 +117,59 @@ rotate_image()
 
 rebuild_base_containers()
 {
-    local debian_version=$1
-    local ynh_version=$2
-    local arch=$3
-    local base_image_to_rebuild="yunohost-$debian_version-$ynh_version"
+	local debian_version=$1
+	local ynh_version=$2
+	local arch=$3
+	local base_image_to_rebuild="yunohost-$debian_version-$ynh_version"
 
 	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild-tmp"
 	
 	wait_container "$base_image_to_rebuild-tmp"
 
 	if [[ "$debian_version" == "buster" ]]
-    then
-        lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
-    fi
+	then
+		lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
+	fi
 
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install curl -y"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes wget curl"
 	# Install Git LFS, git comes pre installed with ubuntu image.
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install git-lfs -y"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install gitlab-runner -y"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 
-	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
-
-    if [[ "$debian_version" == "buster" ]]
-    then
-        INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/buster-unstable/install_yunohost"
-    else
-        INSTALL_SCRIPT="https://install.yunohost.org"
+	# Add yunohost repo
+	local CUSTOMDEB="deb http://forge.yunohost.org/debian/ stretch stable"
+	if [[ "$ynh_version" == "stable" ]] ; then
+        CUSTOMDEB="$CUSTOMDEB"
+    elif [[ "$ynh_version" == "testing" ]] ; then
+        CUSTOMDEB="$CUSTOMDEB testing"
+    elif [[ "$ynh_version" == "unstable" ]] ; then
+        CUSTOMDEB="$CUSTOMDEB testing unstable"
     fi
-	# Install yunohost
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
 
-	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-postinstall"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "echo \"$CUSTOMDEB\" > /etc/apt/sources.list.d/yunohost.list"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "wget -O- https://forge.yunohost.org/yunohost.asc -q | apt-key add -qq - >/dev/null 2>&1"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
 
-	# Running post Install
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
+	# Patch install dependencies
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "touch /var/log/auth.log"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "
+if ! id avahi > /dev/null 2>&1; then
+	avahi_id=$((500 + RANDOM % 500))
+	while cut -d ':' -f 3 /etc/passwd | grep -q \$avahi_id
+	do
+		avahi_id=$((500 + RANDOM % 500))
+	done
+	adduser --disabled-password  --quiet --system --home /var/run/avahi-daemon --no-create-home --gecos \"Avahi mDNS daemon\" --group avahi --uid \$avahi_id
+fi"
 
-	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-postinstall"
+	# Pre install dependencies
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
+
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild"
 
 	lxc stop "$base_image_to_rebuild-tmp"
 
@@ -169,11 +179,11 @@ rebuild_base_containers()
 update_image() {
 	local image_to_update=$1
 
-    if ! lxc image info "$image_to_update" &>/dev/null
-    then
-        echo "Unable to upgrade image $image_to_update"
-        return
-    fi
+	if ! lxc image info "$image_to_update" &>/dev/null
+	then
+		echo "Unable to upgrade image $image_to_update"
+		return
+	fi
 
 	# Start and run upgrade
 	lxc launch "$image_to_update" "$image_to_update-tmp"

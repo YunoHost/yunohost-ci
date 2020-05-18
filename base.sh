@@ -1,18 +1,7 @@
 #!/usr/bin/env bash
 
 # All Variables here: https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference, strating with CUSTOM_ENV_
-#CUSTOM_ENV_CI_DEFAULT_BRANCH=stretch-unstable
-#CUSTOM_ENV_CI_JOB_NAME=build1
-#CUSTOM_ENV_CI_BUILD_STAGE=pre-postinstall
-#CUSTOM_ENV_CI_JOB_STAGE=pre-postinstall
-#CUSTOM_ENV_CI_BUILD_NAME=build1
-#CUSTOM_ENV_CI_PROJECT_TITLE=yunohost
-#CUSTOM_ENV_CI_RUNNER_EXECUTABLE_ARCH=linux/amd64
-#CUSTOM_ENV_CI_PROJECT_NAMESPACE=yunohost
-#CUSTOM_ENV_CI_COMMIT_REF_NAME=stretch-unstable
-#CUSTOM_ENV_CI_COMMIT_REF_SLUG=stretch-unstable
-#CUSTOM_ENV_CI_PROJECT_NAME=yunohost
-#CUSTOM_ENV_CI_PROJECT_DIR=/builds/yunohost/yunohost
+
 CONTAINER_ID="runner-$CUSTOM_ENV_CI_RUNNER_ID-project-$CUSTOM_ENV_CI_PROJECT_ID-concurrent-$CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID-$CUSTOM_ENV_CI_JOB_ID"
 ARCH="$(echo $CUSTOM_ENV_CI_RUNNER_EXECUTABLE_ARCH | cut -d'/' -f2)" # linux/amd64
 DEFAULT_BRANCH="$CUSTOM_ENV_CI_DEFAULT_BRANCH"
@@ -34,3 +23,7 @@ PROJECT_NAME="$CUSTOM_ENV_CI_PROJECT_NAME"
 
 # For example yunohost-stretch-unstable
 BASE_IMAGE="yunohost-$DEBIAN_VERSION-$CURRENT_VERSION"
+
+
+YNH_DEPENDENCIES="debhelper python-psutil python-requests python-dnspython python-openssl python-miniupnpc python-dbus python-jinja2 python-toml python-packaging apt apt-transport-https nginx nginx-extras php-fpm php-ldap php-intl mariadb-server php-mysql php-mysqlnd openssh-server iptables fail2ban dnsutils bind9utils openssl ca-certificates netcat-openbsd iproute2 slapd ldap-utils sudo-ldap libnss-ldapd unscd libpam-ldapd dnsmasq avahi-daemon libnss-mdns resolvconf libnss-myhostname postfix postfix-ldap postfix-policyd-spf-perl postfix-pcre dovecot-core dovecot-ldap dovecot-lmtpd dovecot-managesieved dovecot-antispam rspamd opendkim-tools postsrsd procmail mailutils redis-server git curl wget cron unzip lsb-release haveged fake-hwclock equivs lsof whois python-publicsuffix"
+BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python-pip"
