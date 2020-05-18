@@ -143,12 +143,12 @@ rebuild_base_containers()
 	# Add yunohost repo
 	local CUSTOMDEB="deb http://forge.yunohost.org/debian/ stretch stable"
 	if [[ "$ynh_version" == "stable" ]] ; then
-        CUSTOMDEB="$CUSTOMDEB"
-    elif [[ "$ynh_version" == "testing" ]] ; then
-        CUSTOMDEB="$CUSTOMDEB testing"
-    elif [[ "$ynh_version" == "unstable" ]] ; then
-        CUSTOMDEB="$CUSTOMDEB testing unstable"
-    fi
+		CUSTOMDEB="$CUSTOMDEB"
+	elif [[ "$ynh_version" == "testing" ]] ; then
+		CUSTOMDEB="$CUSTOMDEB testing"
+	elif [[ "$ynh_version" == "unstable" ]] ; then
+		CUSTOMDEB="$CUSTOMDEB testing unstable"
+	fi
 
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "echo \"$CUSTOMDEB\" > /etc/apt/sources.list.d/yunohost.list"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "wget -O- https://forge.yunohost.org/yunohost.asc -q | apt-key add -qq - >/dev/null 2>&1"
@@ -167,7 +167,7 @@ if ! id avahi > /dev/null 2>&1; then
 fi"
 
 	# Pre install dependencies
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
 
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U pip pytest pytest-sugar pytest-mock requests-mock mock"
 
