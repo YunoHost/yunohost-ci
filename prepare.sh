@@ -15,7 +15,7 @@ start_container () {
 		lxc delete -f "$CONTAINER_ID"
 	fi
 
-	if ! lxc image info "$BASE_IMAGE" &>/dev/null
+	if ! lxc image info "$BASE_IMAGE-$SNAPSHOT_NAME" &>/dev/null
 	then
 		echo "$BASE_IMAGE not found, please rebuild with rebuild_all.sh"
 		# Inform GitLab Runner that this is a system failure, so it
@@ -23,7 +23,7 @@ start_container () {
 		exit $SYSTEM_FAILURE_EXIT_CODE
 	fi
 
-	lxc launch "$BASE_IMAGE" "$CONTAINER_ID" 2>/dev/null
+	lxc launch "$BASE_IMAGE-$SNAPSHOT_NAME" "$CONTAINER_ID" 2>/dev/null
 	lxc config set "$CONTAINER_ID" security.nesting true
 
 	mkdir -p $current_dir/cache

@@ -15,10 +15,7 @@ case ${2} in
 	build_script)
 		case $PROJECT_NAME in
 			yunohost)
-				echo "Running migrations yunohost"
-
-				# Run migrations
-				lxc exec "$CONTAINER_ID" -- sh -c "yunohost tools migrations migrate"
+				# Nothing to do?
 			;;
 		esac
 		;;

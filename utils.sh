@@ -15,10 +15,13 @@ clean_containers()
 		fi
 	done
 
-	if lxc image info $base_image_to_clean &>/dev/null
-	then
-		lxc image delete $base_image_to_clean
-	fi
+	for image_to_delete in "$base_image_to_clean-"{"before-install","after-install"}
+	do
+		if lxc image info $image_to_delete &>/dev/null
+		then
+			lxc image delete $image_to_delete
+		fi
+	done
 }
 
 wait_container()
@@ -140,61 +143,36 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 
-	# Add yunohost repo
-	local CUSTOMDEB="deb http://forge.yunohost.org/debian/ stretch stable"
-	if [[ "$ynh_version" == "stable" ]] ; then
-		CUSTOMDEB="$CUSTOMDEB"
-	elif [[ "$ynh_version" == "testing" ]] ; then
-		CUSTOMDEB="$CUSTOMDEB testing"
-	elif [[ "$ynh_version" == "unstable" ]] ; then
-		CUSTOMDEB="$CUSTOMDEB testing unstable"
+	if [[ "$debian_version" == "buster" ]]
+	then
+		INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/buster-unstable/install_yunohost"
+	else
+		INSTALL_SCRIPT="https://install.yunohost.org"
 	fi
 
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "echo \"$CUSTOMDEB\" > /etc/apt/sources.list.d/yunohost.list"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "wget -O- https://forge.yunohost.org/yunohost.asc -q | apt-key add -qq - >/dev/null 2>&1"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
+	# Download the YunoHost install script
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
+	
+	# Patch the YunoHost install script
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -E 's/(step\s+restart_services)/#\1/' install.sh"
 
-	# Patch install dependencies
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "touch /var/log/auth.log"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "
-if ! id avahi > /dev/null 2>&1; then
-	avahi_id=$((500 + RANDOM % 500))
-	while cut -d ':' -f 3 /etc/passwd | grep -q \$avahi_id
-	do
-		avahi_id=$((500 + RANDOM % 500))
-	done
-	adduser --disabled-password  --quiet --system --home /var/run/avahi-daemon --no-create-home --gecos \"Avahi mDNS daemon\" --group avahi --uid \$avahi_id
-fi"
-
-	# Insert new values into debconf database
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "
-debconf-set-selections << EOF
-slapd slapd/password1 password yunohost
-slapd slapd/password2 password yunohost
-slapd slapd/domain    string yunohost.org
-slapd shared/organization   string yunohost.org
-slapd slapd/allow_ldap_v2   boolean false
-slapd slapd/invalid_config  boolean true
-slapd slapd/backend	select MDB
-postfix postfix/main_mailer_type select Internet Site
-postfix postfix/mailname string /etc/mailname
-mariadb-server-10.1 mysql-server/root_password password yunohost
-mariadb-server-10.1 mysql-server/root_password_again password yunohost
-nslcd nslcd/ldap-bindpw   password
-nslcd nslcd/ldap-starttls boolean false
-nslcd nslcd/ldap-reqcert  select
-nslcd nslcd/ldap-uris   string  ldap://localhost/
-nslcd nslcd/ldap-binddn string
-nslcd nslcd/ldap-base   string  dc=yunohost,dc=org
-libnss-ldapd libnss-ldapd/nsswitch multiselect group, passwd, shadow
-postsrsd postsrsd/domain string yunohost.org
-EOF"
+	# Run the YunoHost install script patched
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
 
 	# Pre install dependencies
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
 
-	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild"
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
+
+	# Install YunoHost
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt --assume-yes -o Dpkg::Options::=\"--force-confold\" -o APT::install-recommends=true install yunohost yunohost-admin postfix"
+	
+	# Run postinstall
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
+
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-install"
 
 	lxc stop "$base_image_to_rebuild-tmp"
 

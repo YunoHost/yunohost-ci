@@ -5,10 +5,13 @@ source $current_dir/utils.sh # Get utils functions.
 
 for debian_version in "stretch" "buster"
 do
-    for ynh_version in "stable" "testing" "unstable"
-    do
-        image="yunohost-$debian_version-$ynh_version"
+	for ynh_version in "stable" "testing" "unstable"
+	do
+		for snapshot in "before-install" "after-install"
+		do
+			image="yunohost-$debian_version-$ynh_version-$snapshot"
 
-        update_image $image
-    done
+			update_image $image
+		done
+	done
 done
