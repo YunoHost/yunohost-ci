@@ -9,9 +9,7 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
-			image="yunohost-$debian_version-$ynh_version-$snapshot"
-
-			update_image $image
+			update_image $debian_version $ynh_version $snapshot
 		done
 	done
 done

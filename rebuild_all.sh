@@ -36,7 +36,7 @@ do
 
 				lxc delete -f "yunohost-$debian_version-$ynh_version-$snapshot-tmp"
 
-				update_image "yunohost-$debian_version-$ynh_version-$snapshot"
+				update_image $debian_version $ynh_version $snapshot
 			done
 		done
 	fi

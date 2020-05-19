@@ -160,14 +160,7 @@ rebuild_base_containers()
 	# Run the YunoHost install script patched
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
 
-
-	if [[ "$debian_version" == "buster" ]]
-	then
-		YNH_DEPENDENCIES="apt apt-transport-https apt-utils avahi-daemon bind9utils ca-certificates cron curl debhelper dnsmasq dnsutils dovecot-antispam dovecot-core dovecot-ldap dovecot-lmtpd dovecot-managesieved equivs fail2ban fake-hwclock git haveged inetutils-ping iproute2 iptables jq ldap-utils libconvert-asn1-perl libdbd-ldap-perl libestr0 libfastjson4 libgssapi-perl libjq1 liblognorm5 libmcrypt4 libnet-ldap-perl libnss-ldapd libnss-mdns libnss-myhostname libopts25 libpam-ldapd libyaml-0-2 logrotate lsb-release lsof lua5.1 lua-bitop lua-event lua-expat lua-filesystem lua-json lua-ldap lua-lpeg lua-rex-pcre lua-sec lua-socket lua-zlib mailutils mariadb-server netcat-openbsd nginx nginx-extras ntp opendkim-tools openssh-server openssl php-curl php-gd php-mbstring php-xml php-curl php-fpm php-gd php-gettext php-intl php-ldap php-mbstring php-mysql php-mysqlnd php-pear php-php-gettext php-xml postfix postfix-ldap postfix-pcre postfix-policyd-spf-perl postsrsd procmail python-argcomplete python-bottle python-dbus python-dnspython python-gevent python-gevent-websocket python-greenlet python-jinja2 python-ldap python-openssl python-packaging python-psutil python-publicsuffix python-requests python-toml python-tz python-yaml redis-server resolvconf rspamd rsyslog slapd sudo-ldap unattended-upgrades unscd unzip wget whois"
-	else
-		YNH_DEPENDENCIES="apt apt-transport-https apt-utils avahi-daemon bind9utils ca-certificates cron curl debhelper dnsmasq dnsutils dovecot-antispam dovecot-core dovecot-ldap dovecot-lmtpd dovecot-managesieved equivs fail2ban fake-hwclock git haveged inetutils-ping iproute2 iptables jq ldap-utils libconvert-asn1-perl libdbd-ldap-perl libestr0 libfastjson4 libgssapi-perl libjq1 liblogging-stdlog0 liblognorm5 libmcrypt4 libnet-ldap-perl libnss-ldapd libnss-mdns libnss-myhostname libonig4 libopts25 libpam-ldapd libyaml-0-2 logrotate lsb-release lsof lua5.1 lua-bitop lua-event lua-expat lua-filesystem lua-json lua-ldap lua-lpeg lua-rex-pcre lua-sec lua-socket lua-zlib mailutils mariadb-server netcat-openbsd nginx nginx-extras ntp opendkim-tools openssh-server openssl php-curl php-gd php-mbstring php-mcrypt php-xml php-curl php-fpm php-gd php-gettext php-intl php-ldap php-mbstring php-mcrypt php-mysql php-mysqlnd php-pear php-php-gettext php-xml postfix postfix-ldap postfix-pcre postfix-policyd-spf-perl postsrsd procmail python-argcomplete python-bottle python-dbus python-dnspython python-gevent python-gevent-websocket python-greenlet python-jinja2 python-ldap python-miniupnpc python-openssl python-packaging python-psutil python-publicsuffix python-requests python-toml python-tz python-yaml redis-server resolvconf rspamd rsyslog slapd sudo-ldap unattended-upgrades unscd unzip wget whois"
-	fi
-
+	YNH_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$debian_version-$ynh_version/debian/control 2> /dev/null | grep "^Depends" -A50 | grep "Recommends:" -B50 | grep "^ *," | grep -o -P "[\w\-]{3,}" | grep -v moulinette | grep -v ssowat |tr "\n" " ")
 	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python-pip"
 	PIP_PKG="mock pip pytest pytest-mock pytest-sugar requests-mock tox"
 
@@ -191,7 +184,10 @@ rebuild_base_containers()
 }
 
 update_image() {
-	local image_to_update=$1
+	local debian_version=$1
+	local ynh_version=$2
+	local snapshot=$3
+	local image_to_update="yunohost-$debian_version-$ynh_version-$snapshot"
 
 	if ! lxc image info "$image_to_update" &>/dev/null
 	then
@@ -206,6 +202,11 @@ update_image() {
 
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "apt-get upgrade --assume-yes"
+	
+	YNH_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$debian_version-$ynh_version/debian/control 2> /dev/null | grep "^Depends" -A50 | grep "Recommends:" -B50 | grep "^ *," | grep -o -P "[\w\-]{3,}" | grep -v moulinette | grep -v ssowat |tr "\n" " ")
+	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python-pip"
+	PIP_PKG="mock pip pytest pytest-mock pytest-sugar requests-mock tox"
+
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
 
