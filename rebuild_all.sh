@@ -15,26 +15,29 @@ do
 
 		for ynh_version in "testing" "unstable"
 		do
-			lxc launch "yunohost-$debian_version-stable" "yunohost-$debian_version-$ynh_version-tmp"
+			for snapshot in "before-install" "after-install"
+			do
+				lxc launch "yunohost-$debian_version-stable-$snapshot" "yunohost-$debian_version-$ynh_version-$snapshot-tmp"
 
-			if [[ "$ynh_version" == "testing" ]]
-			then
-				repo_version="testing"
-			elif [[ "$DISTRIB" == "unstable" ]]
-			then
-				repo_version="testing unstable"
-			fi
+				if [[ "$ynh_version" == "testing" ]]
+				then
+					repo_version="testing"
+				elif [[ "$DISTRIB" == "unstable" ]]
+				then
+					repo_version="testing unstable"
+				fi
 
-			lxc exec "yunohost-$debian_version-$ynh_version-tmp" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
-	do
-		sed -i 's@^deb http://forge.yunohost.org.*@& $repo_version@' \$FILE
-	done"
+				lxc exec "yunohost-$debian_version-$ynh_version-$snapshot-tmp" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
+		do
+			sed -i 's@^deb http://forge.yunohost.org.*@& $repo_version@' \$FILE
+		done"
 
-			rotate_image "yunohost-$debian_version-$ynh_version-tmp" "yunohost-$debian_version-$ynh_version"
+				rotate_image "yunohost-$debian_version-$ynh_version-$snapshot-tmp" "yunohost-$debian_version-$ynh_version-$snapshot"
 
-			lxc delete -f "yunohost-$debian_version-$ynh_version-tmp"
+				lxc delete -f "yunohost-$debian_version-$ynh_version-$snapshot-tmp"
 
-			update_image "yunohost-$debian_version-$ynh_version"
+				update_image "yunohost-$debian_version-$ynh_version-$snapshot"
+			done
 		done
 	fi
 done
