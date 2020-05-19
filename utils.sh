@@ -166,6 +166,30 @@ if ! id avahi > /dev/null 2>&1; then
 	adduser --disabled-password  --quiet --system --home /var/run/avahi-daemon --no-create-home --gecos \"Avahi mDNS daemon\" --group avahi --uid \$avahi_id
 fi"
 
+	# Insert new values into debconf database
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "
+debconf-set-selections << EOF
+slapd slapd/password1 password yunohost
+slapd slapd/password2 password yunohost
+slapd slapd/domain    string yunohost.org
+slapd shared/organization   string yunohost.org
+slapd slapd/allow_ldap_v2   boolean false
+slapd slapd/invalid_config  boolean true
+slapd slapd/backend	select MDB
+postfix postfix/main_mailer_type select Internet Site
+postfix postfix/mailname string /etc/mailname
+mariadb-server-10.1 mysql-server/root_password password yunohost
+mariadb-server-10.1 mysql-server/root_password_again password yunohost
+nslcd nslcd/ldap-bindpw   password
+nslcd nslcd/ldap-starttls boolean false
+nslcd nslcd/ldap-reqcert  select
+nslcd nslcd/ldap-uris   string  ldap://localhost/
+nslcd nslcd/ldap-binddn string
+nslcd nslcd/ldap-base   string  dc=yunohost,dc=org
+libnss-ldapd libnss-ldapd/nsswitch multiselect group, passwd, shadow
+postsrsd postsrsd/domain string yunohost.org
+EOF"
+
 	# Pre install dependencies
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YNH_DEPENDENCIES $BUILD_DEPENDENCIES"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
