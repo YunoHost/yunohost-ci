@@ -154,8 +154,8 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
 	
 	# Patch the YunoHost install script
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -E 's/(step\s+restart_services)/#\1/' install.sh"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/#\1/' install.sh"
 
 	# Run the YunoHost install script patched
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
