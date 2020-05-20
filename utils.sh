@@ -131,7 +131,7 @@ get_dependencies()
 	# Same as above, except that all dependencies are in the same line
 	SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/$debian_version-$ynh_version/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
 	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python-pip"
-	PIP_PKG="mock pip pytest pytest-mock pytest-sugar requests-mock tox ansi2html"
+	PIP_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html"
 }
 
 rebuild_base_containers()
