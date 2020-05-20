@@ -185,7 +185,7 @@ rebuild_base_containers()
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
 
 	# Install YunoHost
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt --assume-yes -o Dpkg::Options::=\"--force-confold\" -o APT::install-recommends=true install yunohost yunohost-admin postfix"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
 	
 	# Run postinstall
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
