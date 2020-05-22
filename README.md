@@ -72,13 +72,11 @@ check_interval = 0
 
 ## Using images
 
-Use the field `image` to switch between `before-install`, `before-postinstall` or `after-postinstall` (`after-postinstall` by default) for example:
-- `image: after-postinstall` to use the image after the postinstall of Yunohost
+Use the field `image` to switch between `before-install` or `after-install` (`after-install` by default) for example:
+- `image: after-install` to use the image after the postinstall of Yunohost
 - `image: before-install` to use the image before the installation of YunoHost
-- `...`
 
 ## TODO
 
 - Support more YunoHost Core projects (for now only `yunohost` is supported, not `moulinette`...)
-- Be sure that the runner can run several jobs in parallel (The `rebuild_base_containers` function in `prepare.sh` script can't be run in parallel, should we run a pre-prepare script manually to download and prepare lxc envs?).
 - Git pull this repo before running tests to keep these files up-to-date.
