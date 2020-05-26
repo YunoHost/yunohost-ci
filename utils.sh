@@ -3,6 +3,49 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $current_dir/base.sh # Get variables from base.
 
+readonly NORMAL=$(printf '\033[0m')
+readonly BOLD=$(printf '\033[1m')
+readonly faint=$(printf '\033[2m')
+readonly UNDERLINE=$(printf '\033[4m')
+readonly NEGATIVE=$(printf '\033[7m')
+readonly RED=$(printf '\033[31m')
+readonly GREEN=$(printf '\033[32m')
+readonly ORANGE=$(printf '\033[33m')
+readonly BLUE=$(printf '\033[34m')
+readonly YELLOW=$(printf '\033[93m')
+readonly WHITE=$(printf '\033[39m')
+
+function success()
+{
+  local msg=${1}
+  echo "[${BOLD}${GREEN} OK ${NORMAL}] ${msg}"
+}
+
+function info()
+{
+  local msg=${1}
+  echo "[${BOLD}${BLUE}INFO${NORMAL}] ${msg}"
+}
+
+function warn()
+{
+  local msg=${1}
+  echo "[${BOLD}${ORANGE}WARN${NORMAL}] ${msg}" 2>&1
+}
+
+function error()
+{
+  local msg=${1}
+  echo "[${BOLD}${RED}FAIL${NORMAL}] ${msg}"  2>&1
+}
+
+function critical()
+{
+  local msg=${1}
+  echo "[${BOLD}${RED}CRIT${NORMAL}] ${msg}"  2>&1
+  exit 1
+}
+
 clean_containers()
 {
 	local base_image_to_clean=$1
@@ -48,7 +91,7 @@ wait_container()
 			fi
 
 			if [ "$j" == "10" ]; then
-				echo 'Failed to start the container'
+				error 'Failed to start the container'
 				failstart=1
 
 				restart_container "$1"
@@ -64,7 +107,7 @@ wait_container()
 			fi
 
 			if [ "$j" == "10" ]; then
-				echo 'Failed to access the internet'
+				error 'Failed to access the internet'
 				failstart=1
 
 				restart_container "$1"
@@ -80,7 +123,7 @@ wait_container()
 			fi
 
 			if [ "$j" == "10" ]; then
-				echo 'Waiting too long for lock release'
+				error 'Waiting too long for lock release'
 				failstart=1
 
 				restart_container "$1"
@@ -221,7 +264,7 @@ update_image() {
 
 	if ! lxc image info "$image_to_update" &>/dev/null
 	then
-		echo "Unable to upgrade image $image_to_update"
+		error "Unable to upgrade image $image_to_update"
 		return
 	fi
 
