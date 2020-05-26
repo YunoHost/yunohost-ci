@@ -11,7 +11,7 @@ DEBIAN_VERSION=$(echo $CUSTOM_ENV_CI_COMMIT_REF_NAME | cut -d'-' -f1) # CUSTOM_E
 if [ -z "$DEBIAN_VERSION" ] || [ "$DEBIAN_VERSION" != "stretch" ] && [ "$DEBIAN_VERSION" != "buster" ]
 then
 	DEBIAN_VERSION="$(echo $CUSTOM_ENV_CI_DEFAULT_BRANCH | cut -d'-' -f1)" # stretch-unstable, buster-unstable...
-	echo "Use the default debian version: $DEBIAN_VERSION"
+	info "Use the default debian version: $DEBIAN_VERSION"
 fi
 SNAPSHOT_NAME="$CUSTOM_ENV_CI_JOB_IMAGE"
 if [ -z "$SNAPSHOT_NAME" ]

@@ -39,13 +39,6 @@ function error()
   echo "[${BOLD}${RED}FAIL${NORMAL}] ${msg}"  2>&1
 }
 
-function critical()
-{
-  local msg=${1}
-  echo "[${BOLD}${RED}CRIT${NORMAL}] ${msg}"  2>&1
-  exit 1
-}
-
 clean_containers()
 {
 	local base_image_to_clean=$1
