@@ -33,6 +33,8 @@ start_container () {
 	wait_container $CONTAINER_ID
 }
 
-info "Running in $CONTAINER_ID"
+info "Starting $CONTAINER_ID"
 
 start_container
+
+info "$CONTAINER_ID started properly"

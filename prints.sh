@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-readonly NORMAL=$(printf '\033[0m')
-readonly BOLD=$(printf '\033[1m')
-readonly faint=$(printf '\033[2m')
-readonly UNDERLINE=$(printf '\033[4m')
-readonly NEGATIVE=$(printf '\033[7m')
-readonly RED=$(printf '\033[31m')
-readonly GREEN=$(printf '\033[32m')
-readonly ORANGE=$(printf '\033[33m')
-readonly BLUE=$(printf '\033[34m')
-readonly YELLOW=$(printf '\033[93m')
-readonly WHITE=$(printf '\033[39m')
+NORMAL=$(printf '\033[0m')
+BOLD=$(printf '\033[1m')
+faint=$(printf '\033[2m')
+UNDERLINE=$(printf '\033[4m')
+NEGATIVE=$(printf '\033[7m')
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+ORANGE=$(printf '\033[33m')
+BLUE=$(printf '\033[34m')
+YELLOW=$(printf '\033[93m')
+WHITE=$(printf '\033[39m')
 
 function success()
 {
