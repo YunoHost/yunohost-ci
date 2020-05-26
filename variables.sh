@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $current_dir/prints.sh # Get variables from variables.
+
 # All Variables here: https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference, strating with CUSTOM_ENV_
 
 CONTAINER_ID="runner-$CUSTOM_ENV_CI_RUNNER_ID-project-$CUSTOM_ENV_CI_PROJECT_ID-concurrent-$CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID-$CUSTOM_ENV_CI_JOB_ID"
@@ -11,7 +14,7 @@ DEBIAN_VERSION=$(echo $CUSTOM_ENV_CI_COMMIT_REF_NAME | cut -d'-' -f1) # CUSTOM_E
 if [ -z "$DEBIAN_VERSION" ] || [ "$DEBIAN_VERSION" != "stretch" ] && [ "$DEBIAN_VERSION" != "buster" ]
 then
 	DEBIAN_VERSION="$(echo $CUSTOM_ENV_CI_DEFAULT_BRANCH | cut -d'-' -f1)" # stretch-unstable, buster-unstable...
-	info "Use the default debian version: $DEBIAN_VERSION"
+	echo "Use the default debian version: $DEBIAN_VERSION"
 fi
 SNAPSHOT_NAME="$CUSTOM_ENV_CI_JOB_IMAGE"
 if [ -z "$SNAPSHOT_NAME" ]
