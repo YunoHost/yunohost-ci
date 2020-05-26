@@ -48,7 +48,7 @@ wait_container()
 			fi
 
 			if [ "$j" == "10" ]; then
-				echo 'Waited for 10 seconds to start container'
+				echo 'Failed to start the container'
 				failstart=1
 
 				restart_container "$1"
@@ -59,12 +59,28 @@ wait_container()
 
 		# Wait for container to access the internet
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "getent hosts debian.org" >/dev/null 2>/dev/null; then
+			if lxc exec "$1" -- /bin/bash -c "wget -q --spider http://github.com"; then
 				break
 			fi
 
 			if [ "$j" == "10" ]; then
-				echo 'Waited for 10 seconds to access the internet'
+				echo 'Failed to access the internet'
+				failstart=1
+
+				restart_container "$1"
+			fi
+
+			sleep 1s
+		done
+
+		# Wait dpkg
+		for j in $(seq 1 10); do
+			if ! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1"; then
+				break
+			fi
+
+			if [ "$j" == "10" ]; then
+				echo 'Waiting too long for lock release'
 				failstart=1
 
 				restart_container "$1"
