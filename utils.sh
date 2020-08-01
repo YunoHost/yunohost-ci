@@ -162,10 +162,7 @@ rebuild_base_containers()
 	
 	wait_container "$base_image_to_rebuild-tmp"
 
-	if [[ "$debian_version" == "buster" ]]
-	then
-		lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
-	fi
+	lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
 
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes wget curl"
@@ -176,12 +173,7 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 
-	if [[ "$debian_version" == "buster" ]]
-	then
-		INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/buster-unstable/install_yunohost"
-	else
-		INSTALL_SCRIPT="https://install.yunohost.org"
-	fi
+	INSTALL_SCRIPT="https://install.yunohost.org"
 
 	# Download the YunoHost install script
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
