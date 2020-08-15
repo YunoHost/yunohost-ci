@@ -203,6 +203,16 @@ rebuild_base_containers()
 	# Run postinstall
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
 
+	# Disable apt-daily
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.timer"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily.service"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.service"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily.timer"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily.service"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
+
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-install"
 
 	lxc stop "$base_image_to_rebuild-tmp"
