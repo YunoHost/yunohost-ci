@@ -60,7 +60,7 @@ wait_container()
 
 		# Wait for container to access the internet
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "which wget > /dev/null 2>&1 && wget -q --spider http://github.com"; then
+			if lxc exec "$1" -- /bin/bash -c "! which wget > /dev/null 2>&1 || wget -q --spider http://github.com"; then
 				break
 			fi
 
