@@ -60,7 +60,7 @@ wait_container()
 
 		# Wait for container to access the internet
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "wget -q --spider http://github.com"; then
+			if lxc exec "$1" -- /bin/bash -c "which wget > /dev/null 2>&1 && wget -q --spider http://github.com"; then
 				break
 			fi
 
@@ -76,7 +76,9 @@ wait_container()
 
 		# Wait dpkg
 		for j in $(seq 1 10); do
-			if ! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1"; then
+			if  ! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1" &&
+				! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1" &&
+				! lxc exec "$1" -- /bin/bash -c "fuser /var/cache/apt/archives/lock > /dev/null 2>&1"; then
 				break
 			fi
 
