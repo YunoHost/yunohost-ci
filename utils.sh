@@ -195,14 +195,6 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip3 install -U $PIP3_PKG"
 
-	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
-
-	# Install YunoHost
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
-	
-	# Run postinstall
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
-
 	# Disable apt-daily
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.timer"
@@ -212,6 +204,14 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily.service"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
+
+	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-before-install"
+
+	# Install YunoHost
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
+	
+	# Run postinstall
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -p the_password --ignore-dyndns"
 
 	rotate_image "$base_image_to_rebuild-tmp" "$base_image_to_rebuild-after-install"
 
