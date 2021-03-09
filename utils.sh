@@ -173,7 +173,7 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 
-	INSTALL_SCRIPT="https://install.yunohost.org"
+	INSTALL_SCRIPT="https://install.yunohost.org/$debian_version"
 
 	# Download the YunoHost install script
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
