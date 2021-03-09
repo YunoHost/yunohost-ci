@@ -167,7 +167,8 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes wget curl"
 	# Install Git LFS, git comes pre installed with ubuntu image.
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+	# Disable this line because we don't need to add a new repo to have git-lfs
+	#lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
