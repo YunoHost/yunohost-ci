@@ -146,9 +146,9 @@ get_dependencies()
 	MOULINETTE_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/moulinette/dev/debian/control 2> /dev/null | sed -n '/^Depends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
 	# Same as above, except that all dependencies are in the same line
 	SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/dev/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
-	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python-pip python3-pip"
+	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python3-pip devscripts"
 	PIP_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html"
-	PIP3_PKG="pip black"
+	PIP3_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black"
 }
 
 rebuild_base_containers()
@@ -189,8 +189,8 @@ rebuild_base_containers()
 
 	# Pre install dependencies
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "pip3 install -U $PIP3_PKG"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "python -m pip install -U $PIP_PKG"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	# Disable apt-daily
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
@@ -240,8 +240,8 @@ update_image() {
 	get_dependencies
 
 	lxc exec "$image_to_update-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
-	lxc exec "$image_to_update-tmp" -- /bin/bash -c "pip install -U $PIP_PKG"
-	lxc exec "$image_to_update-tmp" -- /bin/bash -c "pip3 install -U $PIP3_PKG"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "python -m pip install -U $PIP_PKG"
+	lxc exec "$image_to_update-tmp" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	rotate_image "$image_to_update-tmp" "$image_to_update"
 
