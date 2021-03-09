@@ -8,14 +8,21 @@ source $current_dir/prints.sh # Get variables from variables.
 CONTAINER_ID="runner-$CUSTOM_ENV_CI_RUNNER_ID-project-$CUSTOM_ENV_CI_PROJECT_ID-concurrent-$CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID-$CUSTOM_ENV_CI_JOB_ID"
 ARCH="$(echo $CUSTOM_ENV_CI_RUNNER_EXECUTABLE_ARCH | cut -d'/' -f2)" # linux/amd64
 DEFAULT_BRANCH="$CUSTOM_ENV_CI_DEFAULT_BRANCH"
-CURRENT_VERSION=$(echo $CUSTOM_ENV_CI_DEFAULT_BRANCH | cut -d'-' -f2) # buster-unstable, buster-testing, buster-stable...
-CURRENT_BRANCH="$CUSTOM_ENV_CI_COMMIT_REF_NAME"
-DEBIAN_VERSION=$(echo $CUSTOM_ENV_CI_COMMIT_REF_NAME | cut -d'-' -f1) # CUSTOM_ENV_CI_COMMIT_REF_NAME is the target branch of the MR: stretch-unstable, buster-unstable...
-if [ -z "$DEBIAN_VERSION" ] || [ "$DEBIAN_VERSION" != "buster" ]
-then
-	DEBIAN_VERSION="$(echo $CUSTOM_ENV_CI_DEFAULT_BRANCH | cut -d'-' -f1)" # buster-unstable
-	info "Use the default debian version: $DEBIAN_VERSION"
-fi
+
+CURRENT_BRANCH="$CUSTOM_ENV_CI_COMMIT_REF_NAME" # CUSTOM_ENV_CI_COMMIT_REF_NAME is the target branch of the MR
+LAST_CHANGELOG_ENTRY=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$CURRENT_BRANCH/debian/changelog --silent | head -n 1) # yunohost (4.2) unstable; urgency=low
+CURRENT_VERSION=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f3 | tr -d ';') # stable, testing, unstable
+
+DEBIAN_VERSION_NUMBER=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f2 | tr -d '(' | tr -d ')' | cut -d'.' -f1) # 3, 4, 11
+
+declare -A DEBIAN_VERSION_TABLE
+DEBIAN_VERSION_TABLE=(["4"]="buster" ["11"]="bullseye")
+
+DEBIAN_VERSION="${DEBIAN_VERSION_TABLE[$DEBIAN_VERSION_NUMBER]}"
+
+info "Debian version: $DEBIAN_VERSION"
+info "YunoHost version: $CURRENT_VERSION"
+
 SNAPSHOT_NAME="$CUSTOM_ENV_CI_JOB_IMAGE"
 if [ -z "$SNAPSHOT_NAME" ]
 then
