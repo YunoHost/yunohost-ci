@@ -158,11 +158,9 @@ rebuild_base_containers()
 	local arch=$3
 	local base_image_to_rebuild="yunohost-$debian_version-$ynh_version"
 
-	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild-tmp"
+	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild-tmp" -c security.nesting=true
 	
 	wait_container "$base_image_to_rebuild-tmp"
-
-	lxc config set "$base_image_to_rebuild-tmp" security.nesting true # Need this for buster because it is using apparmor
 
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get update"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes wget curl"
@@ -231,7 +229,7 @@ update_image() {
 	fi
 
 	# Start and run upgrade
-	lxc launch "$image_to_update" "$image_to_update-tmp"
+	lxc launch "$image_to_update" "$image_to_update-tmp" -c security.nesting=true
 	
 	wait_container "$image_to_update-tmp"
 
