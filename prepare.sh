@@ -23,6 +23,8 @@ start_container () {
 		exit $SYSTEM_FAILURE_EXIT_CODE
 	fi
 
+	info "Debian version: $DEBIAN_VERSION, YunoHost version: $CURRENT_VERSION, Image used: $BASE_IMAGE-$SNAPSHOT_NAME"
+
 	lxc launch "$BASE_IMAGE-$SNAPSHOT_NAME" "$CONTAINER_ID" -c security.nesting=true 2>/dev/null
 
 	mkdir -p $current_dir/cache

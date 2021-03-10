@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source $current_dir/prints.sh # Get variables from variables.
+source $current_dir/prints.sh
 
 # All Variables here: https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference, strating with CUSTOM_ENV_
 
@@ -19,9 +19,6 @@ declare -A DEBIAN_VERSION_TABLE
 DEBIAN_VERSION_TABLE=(["4"]="buster" ["11"]="bullseye")
 
 DEBIAN_VERSION="${DEBIAN_VERSION_TABLE[$DEBIAN_VERSION_NUMBER]}"
-
-info "Debian version: $DEBIAN_VERSION"
-info "YunoHost version: $CURRENT_VERSION"
 
 SNAPSHOT_NAME="$CUSTOM_ENV_CI_JOB_IMAGE"
 if [ -z "$SNAPSHOT_NAME" ]
