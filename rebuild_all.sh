@@ -34,3 +34,8 @@ do
 		done
 	done
 done
+
+for debian_version in "bullseye"
+do
+	rebuild_base_containers $debian_version "unstable" "amd64"
+done

@@ -148,7 +148,7 @@ get_dependencies()
 	SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/dev/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
 	BUILD_DEPENDENCIES="git-buildpackage postfix python-setuptools python3-pip devscripts"
 	PIP_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html"
-	PIP3_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black"
+	PIP3_PKG="mock pip pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black jinja2"
 }
 
 rebuild_base_containers()
@@ -172,7 +172,7 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 
-	INSTALL_SCRIPT="https://install.yunohost.org/$debian_version"
+	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/$debian_version/install_yunohost"
 
 	# Download the YunoHost install script
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"

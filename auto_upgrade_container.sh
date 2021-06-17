@@ -13,3 +13,14 @@ do
 		done
 	done
 done
+
+for debian_version in "bullseye"
+do
+	for ynh_version in "unstable"
+	do
+		for snapshot in "before-install" "after-install"
+		do
+			update_image $debian_version $ynh_version $snapshot
+		done
+	done
+done

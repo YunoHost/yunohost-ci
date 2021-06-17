@@ -5,6 +5,7 @@ source $current_dir/variables.sh # Get variables from variables.
 
 case ${2} in
 	prepare_script)
+		echo "CI OPEN: $CUSTOM_ENV_CI_OPEN_MERGE_REQUESTS / CI PIPELINE SOURCE: $CUSTOM_ENV_CI_PIPELINE_SOURCE / REF NAME: $CUSTOM_ENV_CI_COMMIT_REF_NAME / COMMIT: $CUSTOM_ENV_CI_COMMIT_BRANCH, TAG: $CUSTOM_ENV_CI_COMMIT_TAG"
 		;;
 	get_sources)
 		;;
