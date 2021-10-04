@@ -13,7 +13,7 @@ case ${2} in
 		;;
 	download_artifacts)
 		;;
-	# build_script is no step_script
+	# build_script is now step_script
 	# but we can also have "step_release" or "step_accessibility"
 	# More info here:
 	# https://docs.gitlab.com/runner/executors/custom.html#run
