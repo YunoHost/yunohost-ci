@@ -118,7 +118,7 @@ rotate_image()
 	local should_restart=0
 
 	# If the container is running, stop it
-	if [ $(lxc info $instance_to_publish | grep Status | awk '{print $2}') = "Running" ]
+	if [ $(lxc info $instance_to_publish | grep Status | awk '{print $2}') = "RUNNING" ]
 	then
 		should_restart=1
 		lxc stop "$instance_to_publish"
@@ -169,10 +169,19 @@ rebuild_base_containers()
 	#lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
 	# Install gitlab-runner binary since we need for cache/artifacts.
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash"
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
+	if [[ $debian_version == "bullseye" ]]
+	then
+	        lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "wget https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb"
+	        lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "dpkg -i gitlab-runner_amd64.deb"
+	else
+	        lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | os=debian dist=$debian_version bash"
+	        lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
+	fi
 
+	# FIXME : the structure of the install_script repo changed, nowadays there's a single branch containing all dist ...
 	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/$debian_version/install_yunohost"
+
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes remove sudo"
 
 	# Download the YunoHost install script
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
