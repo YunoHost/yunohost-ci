@@ -17,7 +17,7 @@ start_container () {
 
 	if ! lxc image info "$BASE_IMAGE-$SNAPSHOT_NAME" &>/dev/null
 	then
-		error "$BASE_IMAGE not found, please rebuild with rebuild_all.sh"
+		error "$BASE_IMAGE-$SNAPSHOT_NAME not found, please rebuild with rebuild_all.sh"
 		# Inform GitLab Runner that this is a system failure, so it
 		# should be retried.
 		exit $SYSTEM_FAILURE_EXIT_CODE
