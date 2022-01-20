@@ -177,10 +177,7 @@ rebuild_base_containers()
 	        lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 	fi
 
-	# FIXME : the structure of the install_script repo changed, nowadays there's a single branch containing all dist ...
-	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/$debian_version/install_yunohost"
-
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes remove sudo"
+	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/main/$debian_version"
 
 	# Download the YunoHost install script
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
@@ -195,7 +192,7 @@ rebuild_base_containers()
 	get_dependencies
 
 	# Pre install dependencies
-	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
 	lxc exec "$base_image_to_rebuild-tmp" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	# Disable apt-daily
