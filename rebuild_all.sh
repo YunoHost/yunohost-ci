@@ -37,5 +37,6 @@ done
 
 for debian_version in "bullseye"
 do
+	rebuild_base_containers $debian_version "testing" "amd64"
 	rebuild_base_containers $debian_version "unstable" "amd64"
 done

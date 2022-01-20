@@ -16,7 +16,7 @@ done
 
 for debian_version in "bullseye"
 do
-	for ynh_version in "unstable"
+	for ynh_version in "testing" "unstable"
 	do
 		for snapshot in "before-install" "after-install"
 		do
