@@ -118,7 +118,7 @@ rotate_image()
 	local should_restart=0
 
 	# If the container is running, stop it
-	if [ $(lxc info $instance_to_publish | grep Status | awk '{print $2}') = "RUNNING" ]
+	if [ "$(lxc info $instance_to_publish | grep Status | awk '{print tolower($2)}')" = "running" ]
 	then
 		should_restart=1
 		lxc stop "$instance_to_publish"
