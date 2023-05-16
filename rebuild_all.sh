@@ -3,7 +3,7 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $current_dir/utils.sh # Get utils functions.
 
-for debian_version in "buster" "bullseye"
+for debian_version in "bullseye"
 do
 	rebuild_base_containers $debian_version "stable" "amd64"
 
@@ -34,3 +34,10 @@ do
 		done
 	done
 done
+
+
+for debian_version in "bookworm"
+do
+	rebuild_base_containers $debian_version "unstable" "amd64"
+done
+

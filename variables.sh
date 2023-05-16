@@ -13,10 +13,10 @@ CURRENT_BRANCH="$CUSTOM_ENV_CI_COMMIT_REF_NAME" # CUSTOM_ENV_CI_COMMIT_REF_NAME 
 LAST_CHANGELOG_ENTRY=$(curl https://gitlab.com/yunohost/yunohost/-/raw/$CURRENT_BRANCH/debian/changelog --silent | head -n 1) # yunohost (4.2) unstable; urgency=low
 CURRENT_VERSION=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f3 | tr -d ';') # stable, testing, unstable
 
-DEBIAN_VERSION_NUMBER=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f2 | tr -d '(' | tr -d ')' | cut -d'.' -f1) # 3, 4, 11
+DEBIAN_VERSION_NUMBER=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f2 | tr -d '(' | tr -d ')' | cut -d'.' -f1) # 11, 12
 
 declare -A DEBIAN_VERSION_TABLE
-DEBIAN_VERSION_TABLE=(["4"]="buster" ["11"]="bullseye")
+DEBIAN_VERSION_TABLE=(["11"]="bullseye" ["12"]="bookworm")
 
 DEBIAN_VERSION="${DEBIAN_VERSION_TABLE[$DEBIAN_VERSION_NUMBER]}"
 
