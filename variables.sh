@@ -5,7 +5,6 @@ source $current_dir/prints.sh
 
 # All Variables here: https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference, strating with CUSTOM_ENV_
 
-CONTAINER_ID="runner-$CUSTOM_ENV_CI_RUNNER_ID-project-$CUSTOM_ENV_CI_PROJECT_ID-concurrent-$CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID-$CUSTOM_ENV_CI_JOB_ID"
 ARCH="$(echo $CUSTOM_ENV_CI_RUNNER_EXECUTABLE_ARCH | cut -d'/' -f2)" # linux/amd64
 DEFAULT_BRANCH="$CUSTOM_ENV_CI_DEFAULT_BRANCH"
 
@@ -30,3 +29,5 @@ PROJECT_NAME="$CUSTOM_ENV_CI_PROJECT_NAME"
 
 # For example yunohost-buster-unstable
 BASE_IMAGE="yunohost-$DEBIAN_VERSION-$CURRENT_VERSION"
+
+CONTAINER_IMAGE="$BASE_IMAGE-runner-$CUSTOM_ENV_CI_RUNNER_ID-project-$CUSTOM_ENV_CI_PROJECT_ID-concurrent-$CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID"
