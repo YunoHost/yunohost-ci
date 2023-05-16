@@ -36,7 +36,7 @@ case ${2} in
 esac
 
 
-lxc exec "$CONTAINER_ID" /bin/bash < "${1}"
+lxc exec "$CONTAINER_IMAGE" /bin/bash < "${1}"
 if [ $? -ne 0 ]; then
 	# Exit using the variable, to make the build as failure in GitLab
 	# CI.

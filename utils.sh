@@ -46,6 +46,11 @@ wait_container()
 			if [ "$j" == "10" ]; then
 				error 'Failed to access the internet'
 				failstart=1
+				lxc exec "$1" -- /bin/bash -c "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf"
+				lxc exec "$1" -- /bin/bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf"
+				lxc exec "$1" -- /bin/bash -c "sed -i 's/#IGNORE/IGNORE/g' /etc/default/dnsmasq"
+				lxc exec "$1" -- /bin/bash -c "systemctl restart dnsmasq"
+				lxc exec "$1" -- /bin/bash -c "journalctl -u dnsmasq -n 100 --no-pager"
 
 				restart_container "$1"
 			fi
