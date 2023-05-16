@@ -190,20 +190,20 @@ rebuild_base_containers()
 	lxc stop "$base_image_to_rebuild"
 }
 
-update_image() {
+update_container() {
 	local debian_version=$1
 	local ynh_version=$2
 	local snapshot=$3
 	local image_to_update="yunohost-$debian_version-$ynh_version-$snapshot"
 
-	if ! lxc image info "$image_to_update" &>/dev/null
+	if ! lxc info "$image_to_update" &>/dev/null
 	then
 		error "Unable to upgrade image $image_to_update"
 		return
 	fi
 
 	# Start and run upgrade
-	lxc launch "$image_to_update" "$image_to_update" -c security.nesting=true
+	lxc restore "$image_to_update" "$snapshot"
 	
 	wait_container "$image_to_update"
 
