@@ -142,90 +142,90 @@ get_dependencies()
 
 rebuild_base_containers()
 {
-	local debian_version=$1
-	local ynh_version=$2
-	local arch=$3
-	local base_image_to_rebuild="yunohost-$debian_version"
+	local image_to_rebuild=$1
+	local debian_version=$2
+	local ynh_version=$3
+	local arch=$4
 
-	if lxc info "$base_image_to_rebuild" &>/dev/null
+	if lxc info "$image_to_rebuild" &>/dev/null
 	then
-		lxc delete -f "$base_image_to_rebuild"
+		lxc delete -f "$image_to_rebuild"
 	fi
 
-	lxc launch images:debian/$debian_version/$arch "$base_image_to_rebuild" -c security.nesting=true
+	lxc launch images:debian/$debian_version/$arch "$image_to_rebuild" -c security.nesting=true
 	
-	wait_container "$base_image_to_rebuild"
+	wait_container "$image_to_rebuild"
 
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "apt-get update"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes wget curl"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get update"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes wget curl"
 	# Install Git LFS, git comes pre installed with ubuntu image.
 	# Disable this line because we don't need to add a new repo to have git-lfs
-	#lxc exec "$base_image_to_rebuild" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
+	#lxc exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	if [[ $debian_version == "bullseye" ]]
 	then
-			lxc exec "$base_image_to_rebuild" -- /bin/bash -c "wget https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb"
-			lxc exec "$base_image_to_rebuild" -- /bin/bash -c "dpkg -i gitlab-runner_amd64.deb"
+			lxc exec "$image_to_rebuild" -- /bin/bash -c "wget https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb"
+			lxc exec "$image_to_rebuild" -- /bin/bash -c "dpkg -i gitlab-runner_amd64.deb"
 	else
-			lxc exec "$base_image_to_rebuild" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | os=debian dist=$debian_version bash"
-			lxc exec "$base_image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
+			lxc exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | os=debian dist=$debian_version bash"
+			lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 	fi
 
 	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/main/$debian_version"
 
 	# Download the YunoHost install script
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
 	
 	# Patch the YunoHost install script
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/#\1/' install.sh"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/#\1/' install.sh"
 
 	# Run the YunoHost install script patched
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
 
 	get_dependencies $debian_version
 
 	# Pre install dependencies
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	# Disable apt-daily
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.timer"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.service"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.service"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.timer"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.service"
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.timer"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.service"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.service"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.timer"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.service"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
 
 	
 	mkdir -p $current_dir/cache
 	chmod 777 $current_dir/cache
-	lxc config device add "$base_image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
+	lxc config device add "$image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
 
 	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-	lxc config unset "$base_image_to_rebuild" volatile.eth0.hwaddr
+	lxc config unset "$image_to_rebuild" volatile.eth0.hwaddr
 
-	create_snapshot "$base_image_to_rebuild" "$ynh_version" "before-install"
+	create_snapshot "$image_to_rebuild" "$ynh_version" "before-install"
 
 	# Install YunoHost
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
 	
 	# Run postinstall
-	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -u syssa -F 'Syssa Mine' -p the_password --ignore-dyndns --force-diskspace"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -u syssa -F 'Syssa Mine' -p the_password --ignore-dyndns --force-diskspace"
 
-	create_snapshot "$base_image_to_rebuild" "$ynh_version" "after-install"
+	create_snapshot "$image_to_rebuild" "$ynh_version" "after-install"
 
-	lxc stop "$base_image_to_rebuild"
+	lxc stop "$image_to_rebuild"
 }
 
 update_container() {
-	local debian_version=$1
-	local ynh_version=$2
-	local snapshot=$3
-	local image_to_update="yunohost-$debian_version"
+	local image_to_update=$1
+	local debian_version=$2
+	local ynh_version=$3
+	local snapshot=$4
 
 	if ! lxc info "$image_to_update" &>/dev/null
 	then

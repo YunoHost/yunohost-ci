@@ -9,7 +9,7 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
-			update_container "$debian_version" "$ynh_version" "$snapshot"
+			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
 done
@@ -20,8 +20,8 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
-			update_container "$debian_version" "$ynh_version" "$snapshot"
+			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
-		lxc delete -f $(lxc list yunohost-$debian_version-r -c n -f csv)
+		lxc delete -f $(lxc list $PREFIX_IMAGE_NAME-$debian_version-r -c n -f csv)
 	done
 done
