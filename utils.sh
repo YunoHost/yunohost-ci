@@ -97,6 +97,9 @@ create_snapshot()
 	local instance_to_publish=$1
 	local snapshot=$2
 
+	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
+	lxc config unset "$instance_to_publish" volatile.eth0.hwaddr
+
 	# Create snapshot
 	lxc snapshot "$instance_to_publish" "$snapshot" --reuse
 }
