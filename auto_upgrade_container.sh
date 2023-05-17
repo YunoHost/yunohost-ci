@@ -22,5 +22,6 @@ do
 		do
 			update_container $debian_version $ynh_version $snapshot
 		done
+		lxc delete -f $(lxc list yunohost-$debian_version-$ynh_version-r -c n -f csv)
 	done
 done
