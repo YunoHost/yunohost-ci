@@ -189,6 +189,8 @@ rebuild_base_containers()
 	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.service"
 	lxc exec "$base_image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
 
+	lxc config device add "$base_image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
+
 	create_snapshot "$base_image_to_rebuild" "before-install"
 
 	# Install YunoHost

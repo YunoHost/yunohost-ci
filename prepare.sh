@@ -26,11 +26,6 @@ start_container () {
 
 	lxc restore $CONTAINER_IMAGE $SNAPSHOT_NAME
 
-	mkdir -p $current_dir/cache
-	chmod 777 $current_dir/cache
-	lxc config device add "$CONTAINER_IMAGE" cache-folder disk path=/cache source="$current_dir/cache"
-
-	lxc stop $CONTAINER_IMAGE || true
 	lxc start $CONTAINER_IMAGE
 
 	wait_container $CONTAINER_IMAGE
