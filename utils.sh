@@ -108,30 +108,30 @@ create_snapshot()
 # /!\ There's a high risk of lamentable failure if we change the format of this file
 get_dependencies()
 {
-        local debian_version=$1
-        if [[ "$debian_version" == "bullseye" ]]
-        then
-                local branch="dev"
-        else
-                local branch="$debian_version"
-        fi
+		local debian_version=$1
+		if [[ "$debian_version" == "bullseye" ]]
+		then
+				local branch="dev"
+		else
+				local branch="$debian_version"
+		fi
 
-        # To extract the dependencies, we want to retrieve the lines between "^Dependencies:" and the new line that doesn't start with a space (exclusively) . Then, we remove ",", then we remove the version specifiers "(>= X.Y)", then we add simple quotes to packages when there is a pipe (or) 'php-mysql|php-mysqlnd'.
-        YUNOHOST_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$branch/debian/control 2> /dev/null | sed -n '/^Depends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | grep -v moulinette | grep -v ssowat | tr "\n" " ")
+		# To extract the dependencies, we want to retrieve the lines between "^Dependencies:" and the new line that doesn't start with a space (exclusively) . Then, we remove ",", then we remove the version specifiers "(>= X.Y)", then we add simple quotes to packages when there is a pipe (or) 'php-mysql|php-mysqlnd'.
+		YUNOHOST_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$branch/debian/control 2> /dev/null | sed -n '/^Depends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | grep -v moulinette | grep -v ssowat | tr "\n" " ")
 
 		# We add php8.2-cli and mariadb-client to the dependencies for test_app_resources
 		YUNOHOST_DEPENDENCIES="$YUNOHOST_DEPENDENCIES php8.2-cli mariadb-client"
 
-        YUNOHOST_RECOMMENDS=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$branch/debian/control 2> /dev/null | sed -n '/^Recommends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
-        MOULINETTE_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/moulinette/$branch/debian/control 2> /dev/null | sed -n '/^Depends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
-        # Same as above, except that all dependencies are in the same line
-        SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/$branch/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
-        BUILD_DEPENDENCIES="git-buildpackage postfix python3-setuptools python3-pip devscripts"
-        PIP3_PKG='mock pip pyOpenSSL pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black jinja2 types-ipaddress types-enum34 types-cryptography types-toml types-requests types-PyYAML types-pyOpenSSL types-mock  "packaging<22"'
-        if [[ "$debian_version" == "bookworm" ]]
-        then
-                PIP3_PKG="$PIP3_PKG --break-system-packages"
-        fi
+		YUNOHOST_RECOMMENDS=$(curl https://raw.githubusercontent.com/YunoHost/yunohost/$branch/debian/control 2> /dev/null | sed -n '/^Recommends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
+		MOULINETTE_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/moulinette/$branch/debian/control 2> /dev/null | sed -n '/^Depends:/,/^\w/{//!p}' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
+		# Same as above, except that all dependencies are in the same line
+		SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/$branch/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
+		BUILD_DEPENDENCIES="git-buildpackage postfix python3-setuptools python3-pip devscripts"
+		PIP3_PKG='mock pip pyOpenSSL pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black jinja2 types-ipaddress types-enum34 types-cryptography types-toml types-requests types-PyYAML types-pyOpenSSL types-mock  "packaging<22"'
+		if [[ "$debian_version" == "bookworm" ]]
+		then
+				PIP3_PKG="$PIP3_PKG --break-system-packages"
+		fi
 }
 
 rebuild_base_containers()
