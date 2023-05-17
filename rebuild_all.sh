@@ -26,6 +26,8 @@ do
 		sed -i 's@^deb http://forge.yunohost.org.*@& $repo_version@' \$FILE
 	done"
 
+			create_snapshot "yunohost-$debian_version" "$ynh_version" "$snapshot"
+
 			update_container "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
