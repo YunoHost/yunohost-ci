@@ -206,7 +206,7 @@ update_container() {
 	local debian_version=$1
 	local ynh_version=$2
 	local snapshot=$3
-	local image_to_update="yunohost-$debian_version-$ynh_version-$snapshot"
+	local image_to_update="yunohost-$debian_version-$ynh_version"
 
 	if ! lxc info "$image_to_update" &>/dev/null
 	then
