@@ -206,7 +206,7 @@ rebuild_base_containers()
 	lxc config device add "$base_image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
 
 	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-	lxc config unset "$instance_to_publish" volatile.eth0.hwaddr
+	lxc config unset "$base_image_to_rebuild" volatile.eth0.hwaddr
 
 	create_snapshot "$base_image_to_rebuild" "$ynh_version" "before-install"
 
