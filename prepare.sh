@@ -24,7 +24,7 @@ start_container () {
 
 	info "Debian version: $DEBIAN_VERSION, YunoHost version: $CURRENT_VERSION, Image used: $BASE_IMAGE, Snapshot: $SNAPSHOT_NAME"
 
-	lxc restore $CONTAINER_IMAGE $SNAPSHOT_NAME
+	restore_snapshot "$CONTAINER_IMAGE" "$CURRENT_VERSION" "$SNAPSHOT_NAME"
 
 	lxc start $CONTAINER_IMAGE
 

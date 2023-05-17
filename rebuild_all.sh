@@ -3,9 +3,6 @@
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $current_dir/utils.sh # Get utils functions.
 
-mkdir -p $current_dir/cache
-chmod 777 $current_dir/cache
-
 for debian_version in "bullseye"
 do
 	rebuild_base_containers $debian_version "stable" "amd64"
@@ -14,7 +11,7 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
-			lxc launch "yunohost-$debian_version-stable-$snapshot" "yunohost-$debian_version-$ynh_version-$snapshot-tmp"
+			restore_snapshot "yunohost-$debian_version" "stable" "$snapshot"
 
 			if [[ "$ynh_version" == "testing" ]]
 			then
@@ -24,16 +21,12 @@ do
 				repo_version="testing unstable"
 			fi
 
-			lxc exec "yunohost-$debian_version-$ynh_version-$snapshot-tmp" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
+			lxc exec "yunohost-$debian_version" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
 	do
 		sed -i 's@^deb http://forge.yunohost.org.*@& $repo_version@' \$FILE
 	done"
 
-			rotate_image "yunohost-$debian_version-$ynh_version-$snapshot-tmp" "yunohost-$debian_version-$ynh_version-$snapshot"
-
-			lxc delete -f "yunohost-$debian_version-$ynh_version-$snapshot-tmp"
-
-			update_container $debian_version $ynh_version $snapshot
+			update_container "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
 done
