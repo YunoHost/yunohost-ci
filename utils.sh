@@ -135,7 +135,7 @@ get_dependencies()
 		if [[ "$debian_version" == "bookworm" ]]
 		then
 				# We add php8.2-cli and mariadb-client to the dependencies for test_app_resources
-				YUNOHOST_DEPENDENCIES="$YUNOHOST_DEPENDENCIES php8.2-cli mariadb-client"
+				YUNOHOST_DEPENDENCIES="$YUNOHOST_DEPENDENCIES php8.2-cli mariadb-client mariadb-server"
 				PIP3_PKG="$PIP3_PKG --break-system-packages"
 		fi
 }
