@@ -98,6 +98,9 @@ create_snapshot()
 	local ynh_version=$2
 	local snapshot=$3
 
+	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
+	lxc config unset "$image_to_rebuild" volatile.eth0.hwaddr 2> /dev/null
+
 	# Create snapshot
 	lxc snapshot "$instance_to_publish" "$ynh_version-$snapshot" --reuse
 }
@@ -205,9 +208,6 @@ rebuild_base_containers()
 	mkdir -p $current_dir/cache
 	chmod 777 $current_dir/cache
 	lxc config device add "$image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
-
-	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-	lxc config unset "$image_to_rebuild" volatile.eth0.hwaddr
 
 	create_snapshot "$image_to_rebuild" "$ynh_version" "before-install"
 
