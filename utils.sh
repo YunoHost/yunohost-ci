@@ -98,9 +98,6 @@ create_snapshot()
 	local ynh_version=$2
 	local snapshot=$3
 
-	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-	lxc config unset "$image_to_rebuild" volatile.eth0.hwaddr 2> /dev/null
-
 	# Create snapshot
 	lxc snapshot "$instance_to_publish" "$ynh_version-$snapshot" --reuse
 }

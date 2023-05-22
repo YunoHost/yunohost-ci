@@ -30,6 +30,9 @@ start_container () {
 
 	restore_snapshot "$CONTAINER_IMAGE" "$CURRENT_VERSION" "$SNAPSHOT_NAME"
 
+	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
+	lxc config unset "$CONTAINER_IMAGE" volatile.eth0.hwaddr 2> /dev/null
+
 	lxc start $CONTAINER_IMAGE
 
 	wait_container $CONTAINER_IMAGE
