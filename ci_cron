@@ -1,2 +1,2 @@
 # Upgrade all continers
-30 2 * * * root /bin/bash -c "/opt/yunohost-ci/auto_upgrade_container.sh >> /opt/yunohost-ci/upgrade.log 2>>/opt/yunohost-ci/upgrade-error.log"
+30 2 * * * root PATH=/snap/bin/:$PATH /bin/bash -c "/opt/yunohost-ci/auto_upgrade_container.sh >> /opt/yunohost-ci/upgrade.log 2>>/opt/yunohost-ci/upgrade-error.log"
