@@ -9,6 +9,11 @@ ARCH="$(echo $CUSTOM_ENV_CI_RUNNER_EXECUTABLE_ARCH | cut -d'/' -f2)" # linux/amd
 DEFAULT_BRANCH="$CUSTOM_ENV_CI_DEFAULT_BRANCH"
 
 CURRENT_BRANCH="$CUSTOM_ENV_CI_COMMIT_REF_NAME" # CUSTOM_ENV_CI_COMMIT_REF_NAME is the target branch of the MR
+if [ -z "$CURRENT_BRANCH" ]
+then
+	CURRENT_BRANCH="dev"
+fi
+
 LAST_CHANGELOG_ENTRY=$(curl https://gitlab.com/yunohost/yunohost/-/raw/$CURRENT_BRANCH/debian/changelog --silent | head -n 1) # yunohost (4.2) unstable; urgency=low
 CURRENT_VERSION=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f3 | tr -d ';') # stable, testing, unstable
 
