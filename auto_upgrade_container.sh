@@ -9,6 +9,7 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
+			info "Updating container $PREFIX_IMAGE_NAME-$debian_version $ynh_version $snapshot"
 			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
@@ -22,6 +23,7 @@ do
 	do
 		for snapshot in "before-install" "after-install"
 		do
+			info "Updating container $PREFIX_IMAGE_NAME-$debian_version $ynh_version $snapshot"
 			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
