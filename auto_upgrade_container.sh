@@ -13,8 +13,12 @@ do
 			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
-	# Remove old runner containers
-	lxc delete -f $(lxc list $PREFIX_IMAGE_NAME-$debian_version-r -c n -f csv)
+	containers_to_remove=$(lxc list $PREFIX_IMAGE_NAME-$debian_version-r -c n -f csv)
+	if [ -n "$containers_to_remove" ]
+	then
+		# Remove old runner containers
+		lxc delete -f $(echo $containers_to_remove)
+	fi
 done
 
 for debian_version in "bookworm"
@@ -27,6 +31,10 @@ do
 			update_container "$PREFIX_IMAGE_NAME-$debian_version" "$debian_version" "$ynh_version" "$snapshot"
 		done
 	done
-	# Remove old runner containers
-	lxc delete -f $(lxc list $PREFIX_IMAGE_NAME-$debian_version-r -c n -f csv)
+	containers_to_remove=$(lxc list $PREFIX_IMAGE_NAME-$debian_version-r -c n -f csv)
+	if [ -n "$containers_to_remove" ]
+	then
+		# Remove old runner containers
+		lxc delete -f $(echo $containers_to_remove)
+	fi
 done
