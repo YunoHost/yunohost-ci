@@ -12,7 +12,7 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 start_container () {
 	if ! lxc info "$CONTAINER_IMAGE" >/dev/null 2>/dev/null ; then
 		warn 'Container not found, copying it from the prebuilt image'
-		if ! lxc info "$BASE_IMAGE" &>/dev/null || ! lxc info "$BASE_IMAGE" | grep -q "$CURRENT_VERSION-$SNAPSHOT_NAME"
+		if ! lxc info "$BASE_IMAGE" | grep -q "$CURRENT_VERSION-$SNAPSHOT_NAME"
 		then
 			error "$BASE_IMAGE not found, please rebuild with rebuild_all.sh"
 			# Inform GitLab Runner that this is a system failure, so it
