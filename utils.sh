@@ -130,12 +130,13 @@ get_dependencies()
 		# Same as above, except that all dependencies are in the same line
 		SSOWAT_DEPENDENCIES=$(curl https://raw.githubusercontent.com/YunoHost/ssowat/$branch/debian/control 2> /dev/null | grep '^Depends:' | sed 's/Depends://' | sed -e "s/,//g" -e "s/[(][^)]*[)]//g" -e "s/ | \S\+//g" | tr "\n" " ")
 		BUILD_DEPENDENCIES="git-buildpackage postfix python3-setuptools python3-pip devscripts"
+		TESTS_DEPENDENCIES="git hub"
 		PIP3_PKG='mock pip pyOpenSSL pytest pytest-cov pytest-mock pytest-sugar requests-mock tox ansi2html black jinja2 types-ipaddress types-enum34 types-cryptography types-toml types-requests types-PyYAML types-pyOpenSSL types-mock  "packaging<22"'
 
 		if [[ "$debian_version" == "bookworm" ]]
 		then
-				# We add php8.2-cli and mariadb-client to the dependencies for test_app_resources
-				YUNOHOST_DEPENDENCIES="$YUNOHOST_DEPENDENCIES php8.2-cli mariadb-client mariadb-server"
+				# We add php8.2-cli, mariadb-client and mariadb-server to the dependencies for test_app_resources
+				TESTS_DEPENDENCIES="$TESTS_DEPENDENCIES php8.2-cli mariadb-client mariadb-server"
 				PIP3_PKG="$PIP3_PKG --break-system-packages"
 		fi
 }
@@ -187,7 +188,7 @@ rebuild_base_containers()
 	get_dependencies $debian_version
 
 	# Pre install dependencies
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
 	lxc exec "$image_to_rebuild" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	# Disable apt-daily
@@ -245,7 +246,7 @@ update_container() {
 	
 	get_dependencies $debian_version
 
-	lxc exec "$image_to_update" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES"
+	lxc exec "$image_to_update" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
 	lxc exec "$image_to_update" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	create_snapshot "$image_to_update" "$ynh_version" "$snapshot"
