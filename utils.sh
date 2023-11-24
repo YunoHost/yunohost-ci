@@ -104,11 +104,27 @@ create_snapshot()
 
 restore_snapshot()
 {
-	local instance_to_publish=$1
+	local lxc_name=$1
 	local ynh_version=$2
 	local snapshot=$3
+        local retry_lxc=0
 
-	lxc restore "$instance_to_publish" "$ynh_version-$snapshot"
+        while [[ ${retry_lxc} -lt 10 ]]
+        do
+	    lxc restore "$lxc_name" "$ynh_version-$snapshot" && break || retry_lxc=$(($retry_lxc+1))
+            info "Failed to restore snapshot? Retrying in 10 sec ..."
+            if [[ ${retry_lxc} -ge 3 ]]
+            then
+                warn "If this keeps happening, restarting the LXD daemon might help :| ..."
+            fi
+            sleep 10
+        done
+
+	if [[ ${retry_lxc} -ge 10 ]]
+	then
+	    error "Failed to properly restore the snapshot zrgmblg"
+	    return 1
+	fi
 }
 
 # These lines are used to extract the dependencies/recommendations from the debian/control file.
