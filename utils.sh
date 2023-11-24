@@ -196,7 +196,7 @@ rebuild_base_containers()
 	
 	# Patch the YunoHost install script
 	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/#\1/' install.sh"
+	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/echo skip restart service #\1/' install.sh"
 
 	# Run the YunoHost install script patched
 	lxc exec "$image_to_rebuild" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
@@ -223,14 +223,34 @@ rebuild_base_containers()
 	lxc config device add "$image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
 
 	create_snapshot "$image_to_rebuild" "$ynh_version" "before-install"
+	echo "Created snapshot base 'before-install' for $image_to_rebuild"
 
 	# Install YunoHost
 	lxc exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
-	
+
 	# Run postinstall
 	lxc exec "$image_to_rebuild" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -u syssa -F 'Syssa Mine' -p the_password --ignore-dyndns --force-diskspace"
 
+	# Disable services which are not really mandatory, to reduce the LXC memory footprint and hopefully speed things up a bit
+
+	if [[ "$debian_version" == "bookworm" ]]
+	then
+		lxc exec "$image_to_rebuild" -- systemctl -q disable metronome --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable rspamd --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable postsrsd --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable yunohost-api --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable fake-hwclock.service --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable yunoprompt --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable haveged.service --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable unattended-upgrades.service --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable e2scrub_all.timer --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable logrotate.timer --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable phpsessionclean.timer --now
+		lxc exec "$image_to_rebuild" -- systemctl -q disable systemd-tmpfiles-clean.timer --now
+	fi
+
 	create_snapshot "$image_to_rebuild" "$ynh_version" "after-install"
+	echo "Created snapshot base 'after-install' for $image_to_rebuild"
 
 	lxc stop "$image_to_rebuild"
 }
