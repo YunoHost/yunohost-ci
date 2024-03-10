@@ -12,32 +12,23 @@ First you need to install the system dependencies.
 `yunohost-ci` essentially requires Git and the LXD/LXC ecosystem. 
 
 For Gitlab Runner, you can find doc [here](https://docs.gitlab.com/runner/install/linux-repository.html). On Debian-based system, you can add GitLab’s official repository:
+
 ```bash
 curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash
 ```
 
 Then install Gitlab Runner (min version: 12.1):
+
 ```bash
 sudo apt-get install gitlab-runner
 ```
 
-Then, on a Debian-based system (regular Debian, Ubuntu, Mint ...), LXD can be installed using `snapd`. On other systems like Archlinux, you will probably also be able to install `snapd` using the system package manager (or even `lxd` directly).
+Then follow this doc to install incus on your system: <https://linuxcontainers.org/incus/docs/main/installing/#install-incus-from-a-package>
+
+Then you shall initialize incus which will ask you several questions. Usually answering the default (just pressing enter) to all questions is fine. ([doc](https://linuxcontainers.org/incus/docs/main/howto/initialize/))
 
 ```bash
-sudo apt install git snapd
-sudo snap install lxd
-
-# Adding lxc/lxd to /usr/local/bin to make sure we can use them easily even
-# with sudo for which the PATH is defined in /etc/sudoers and probably doesn't
-# include /snap/bin
-sudo ln -s /snap/bin/lxc /usr/local/bin/lxc
-sudo ln -s /snap/bin/lxd /usr/local/bin/lxd
-```
-
-Then you shall initialize LXD which will ask you several questions. Usually answering the default (just pressing enter) to all questions is fine.
-
-```bash
-sudo lxd init
+sudo incus admin init
 ```
 
 ## Register `YunoHost-CI`
