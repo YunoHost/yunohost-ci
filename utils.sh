@@ -111,7 +111,7 @@ restore_snapshot()
 
         while [[ ${retry_incus} -lt 10 ]]
         do
-	    incus restore "$incus_name" "$ynh_version-$snapshot" && break || retry_incus=$(($retry_incus+1))
+	    incus snapshot restore "$incus_name" "$ynh_version-$snapshot" && break || retry_incus=$(($retry_incus+1))
             info "Failed to restore snapshot? Retrying in 10 sec ..."
             if [[ ${retry_incus} -ge 3 ]]
             then
