@@ -99,7 +99,7 @@ create_snapshot()
 	local snapshot=$3
 
 	# Create snapshot
-	incus snapshot "$instance_to_publish" "$ynh_version-$snapshot" --reuse
+	incus snapshot create "$instance_to_publish" "$ynh_version-$snapshot" --reuse
 }
 
 restore_snapshot()
