@@ -36,8 +36,10 @@ case ${2} in
 esac
 
 
-lxc exec "$CONTAINER_IMAGE" /bin/bash < "${1}"
-if [ $? -ne 0 ]; then
+incus exec "$CONTAINER_IMAGE" /bin/bash < "${1}"
+err=$?
+if [ $err -ne 0 ]; then
+	echo "Exit with error code $err"
 	# Exit using the variable, to make the build as failure in GitLab
 	# CI.
 	exit $BUILD_FAILURE_EXIT_CODE

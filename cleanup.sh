@@ -6,4 +6,4 @@ source $current_dir/variables.sh # Get variables from variables.
 
 info "Stopping container $CONTAINER_IMAGE"
 
-lxc stop "$CONTAINER_IMAGE"
+incus stop "$CONTAINER_IMAGE"

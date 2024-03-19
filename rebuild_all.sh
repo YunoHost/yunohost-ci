@@ -21,7 +21,7 @@ do
 				repo_version="testing unstable"
 			fi
 
-			lxc exec "$PREFIX_IMAGE_NAME-$debian_version" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
+			incus exec "$PREFIX_IMAGE_NAME-$debian_version" -- /bin/bash -c "for FILE in \`ls /etc/apt/sources.list /etc/apt/sources.list.d/*\`;
 	do
 		sed -i 's@^deb http://forge.yunohost.org.*@& $repo_version@' \$FILE
 	done"

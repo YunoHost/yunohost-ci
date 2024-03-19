@@ -8,8 +8,8 @@ wait_container()
 {
 	restart_container()
 	{
-		lxc stop "$1"
-		lxc start "$1"
+		incus stop "$1"
+		incus start "$1"
 	}
 
 	# Try to start the container 3 times.
@@ -23,7 +23,7 @@ wait_container()
 		# Wait for container to start, we are using systemd to check this,
 		# for the sake of brevity.
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+			if incus exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
 				break
 			fi
 
@@ -39,18 +39,18 @@ wait_container()
 
 		# Wait for container to access the internet
 		for j in $(seq 1 10); do
-			if lxc exec "$1" -- /bin/bash -c "! which wget > /dev/null 2>&1 || wget -q --spider http://github.com"; then
+			if incus exec "$1" -- /bin/bash -c "! which wget > /dev/null 2>&1 || wget -q --spider http://github.com"; then
 				break
 			fi
 
 			if [ "$j" == "10" ]; then
 				error 'Failed to access the internet'
 				failstart=1
-				lxc exec "$1" -- /bin/bash -c "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf"
-				lxc exec "$1" -- /bin/bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf"
-				lxc exec "$1" -- /bin/bash -c "sed -i 's/#IGNORE/IGNORE/g' /etc/default/dnsmasq"
-				lxc exec "$1" -- /bin/bash -c "systemctl restart dnsmasq"
-				lxc exec "$1" -- /bin/bash -c "journalctl -u dnsmasq -n 100 --no-pager"
+				incus exec "$1" -- /bin/bash -c "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf"
+				incus exec "$1" -- /bin/bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf"
+				incus exec "$1" -- /bin/bash -c "sed -i 's/#IGNORE/IGNORE/g' /etc/default/dnsmasq"
+				incus exec "$1" -- /bin/bash -c "systemctl restart dnsmasq"
+				incus exec "$1" -- /bin/bash -c "journalctl -u dnsmasq -n 100 --no-pager"
 
 				restart_container "$1"
 			fi
@@ -60,9 +60,9 @@ wait_container()
 
 		# Wait dpkg
 		for j in $(seq 1 10); do
-			if  ! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1" &&
-				! lxc exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1" &&
-				! lxc exec "$1" -- /bin/bash -c "fuser /var/cache/apt/archives/lock > /dev/null 2>&1"; then
+			if  ! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1" &&
+				! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1" &&
+				! incus exec "$1" -- /bin/bash -c "fuser /var/cache/apt/archives/lock > /dev/null 2>&1"; then
 				break
 			fi
 
@@ -99,28 +99,28 @@ create_snapshot()
 	local snapshot=$3
 
 	# Create snapshot
-	lxc snapshot "$instance_to_publish" "$ynh_version-$snapshot" --reuse
+	incus snapshot create "$instance_to_publish" "$ynh_version-$snapshot" --reuse
 }
 
 restore_snapshot()
 {
-	local lxc_name=$1
+	local incus_name=$1
 	local ynh_version=$2
 	local snapshot=$3
-        local retry_lxc=0
+        local retry_incus=0
 
-        while [[ ${retry_lxc} -lt 10 ]]
+        while [[ ${retry_incus} -lt 10 ]]
         do
-	    lxc restore "$lxc_name" "$ynh_version-$snapshot" && break || retry_lxc=$(($retry_lxc+1))
+	    incus snapshot restore "$incus_name" "$ynh_version-$snapshot" && break || retry_incus=$(($retry_incus+1))
             info "Failed to restore snapshot? Retrying in 10 sec ..."
-            if [[ ${retry_lxc} -ge 3 ]]
+            if [[ ${retry_incus} -ge 3 ]]
             then
                 warn "If this keeps happening, restarting the LXD daemon might help :| ..."
             fi
             sleep 10
         done
 
-	if [[ ${retry_lxc} -ge 10 ]]
+	if [[ ${retry_incus} -ge 10 ]]
 	then
 	    error "Failed to properly restore the snapshot zrgmblg"
 	    return 1
@@ -164,95 +164,91 @@ rebuild_base_containers()
 	local ynh_version=$3
 	local arch=$4
 
-	if lxc info "$image_to_rebuild" &>/dev/null
+	if incus info "$image_to_rebuild" &>/dev/null
 	then
-		lxc delete -f "$image_to_rebuild"
+		incus delete -f "$image_to_rebuild"
 	fi
 
-	lxc launch images:debian/$debian_version/$arch "$image_to_rebuild" -c security.nesting=true
+	incus launch images:debian/$debian_version/$arch "$image_to_rebuild" -c security.nesting=true
 	
 	wait_container "$image_to_rebuild"
 
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get update"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes wget curl"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "apt-get update"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes wget curl"
 	# Install Git LFS, git comes pre installed with ubuntu image.
 	# Disable this line because we don't need to add a new repo to have git-lfs
-	#lxc exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
+	#incus exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes git-lfs"
 	# Install gitlab-runner binary since we need for cache/artifacts.
 	if [[ $debian_version == "bullseye" ]]
 	then
-			lxc exec "$image_to_rebuild" -- /bin/bash -c "wget https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb"
-			lxc exec "$image_to_rebuild" -- /bin/bash -c "dpkg -i gitlab-runner_amd64.deb"
+			incus exec "$image_to_rebuild" -- /bin/bash -c "wget https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_amd64.deb"
+			incus exec "$image_to_rebuild" -- /bin/bash -c "dpkg -i gitlab-runner_amd64.deb"
 	else
-			lxc exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | os=debian dist=$debian_version bash"
-			lxc exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
+			incus exec "$image_to_rebuild" -- /bin/bash -c "curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | os=debian dist=$debian_version bash"
+			incus exec "$image_to_rebuild" -- /bin/bash -c "apt-get install --assume-yes gitlab-runner"
 	fi
 
 	INSTALL_SCRIPT="https://raw.githubusercontent.com/YunoHost/install_script/main/$debian_version"
 
 	# Download the YunoHost install script
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT > install.sh"
 	
 	# Patch the YunoHost install script
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/echo skip restart service #\1/' install.sh"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+install_yunohost_packages)/#\1/' install.sh"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "sed -i -E 's/(step\s+restart_services)/echo skip restart service #\1/' install.sh"
 
 	# Run the YunoHost install script patched
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "cat install.sh | bash -s -- -a -d $ynh_version"
 
 	get_dependencies $debian_version
 
 	# Pre install dependencies
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	# Disable apt-daily
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.timer"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.timer"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily.service"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q stop apt-daily-upgrade.service"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.timer"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.service"
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.timer --now"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.timer --now"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily.service --now"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "systemctl -q disable apt-daily-upgrade.service --now"
 
 	
 	mkdir -p $current_dir/cache
 	chmod 777 $current_dir/cache
-	lxc config device add "$image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
+	incus config device add "$image_to_rebuild" cache-folder disk path=/cache source="$current_dir/cache"
 
 	create_snapshot "$image_to_rebuild" "$ynh_version" "before-install"
 	echo "Created snapshot base 'before-install' for $image_to_rebuild"
 
 	# Install YunoHost
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "curl $INSTALL_SCRIPT | bash -s -- -a -d $ynh_version"
 
 	# Run postinstall
-	lxc exec "$image_to_rebuild" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -u syssa -F 'Syssa Mine' -p the_password --ignore-dyndns --force-diskspace"
+	incus exec "$image_to_rebuild" -- /bin/bash -c "yunohost tools postinstall -d domain.tld -u syssa -F 'Syssa Mine' -p the_password --ignore-dyndns --force-diskspace"
 
-	# Disable services which are not really mandatory, to reduce the LXC memory footprint and hopefully speed things up a bit
+	# Disable services which are not really mandatory, to reduce the incus memory footprint and hopefully speed things up a bit
 
 	if [[ "$debian_version" == "bookworm" ]]
 	then
-		lxc exec "$image_to_rebuild" -- systemctl -q disable metronome --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable rspamd --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable postsrsd --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable yunohost-api --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable fake-hwclock.service --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable yunoprompt --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable haveged.service --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable unattended-upgrades.service --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable e2scrub_all.timer --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable logrotate.timer --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable phpsessionclean.timer --now
-		lxc exec "$image_to_rebuild" -- systemctl -q disable systemd-tmpfiles-clean.timer --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable metronome --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable rspamd --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable postsrsd --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable yunohost-api --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable fake-hwclock.service --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable yunoprompt --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable haveged.service --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable unattended-upgrades.service --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable e2scrub_all.timer --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable logrotate.timer --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable phpsessionclean.timer --now
+		incus exec "$image_to_rebuild" -- systemctl -q disable systemd-tmpfiles-clean.timer --now
 	fi
 
 	create_snapshot "$image_to_rebuild" "$ynh_version" "after-install"
 	echo "Created snapshot base 'after-install' for $image_to_rebuild"
 
-	lxc stop "$image_to_rebuild"
+	incus stop "$image_to_rebuild"
 }
 
 update_container() {
@@ -261,7 +257,7 @@ update_container() {
 	local ynh_version=$3
 	local snapshot=$4
 
-	if ! lxc info "$image_to_update" &>/dev/null
+	if ! incus info "$image_to_update" &>/dev/null
 	then
 		error "Unable to upgrade image $image_to_update"
 		return
@@ -270,19 +266,19 @@ update_container() {
 	# Start and run upgrade
 	restore_snapshot "$image_to_update" "$ynh_version" "$snapshot"
 	
-	lxc start "$image_to_update" 2>&1 || true
+	incus start "$image_to_update" 2>&1 || true
 
 	wait_container "$image_to_update"
 
-	lxc exec "$image_to_update" -- /bin/bash -c "apt-get update"
-	lxc exec "$image_to_update" -- /bin/bash -c "apt-get upgrade --assume-yes"
+	incus exec "$image_to_update" -- /bin/bash -c "apt-get update"
+	incus exec "$image_to_update" -- /bin/bash -c "apt-get upgrade --assume-yes"
 	
 	get_dependencies $debian_version
 
-	lxc exec "$image_to_update" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
-	lxc exec "$image_to_update" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
+	incus exec "$image_to_update" -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes apt-get --assume-yes -o Dpkg::Options::=\"--force-confold\" install --assume-yes $YUNOHOST_DEPENDENCIES $YUNOHOST_RECOMMENDS $MOULINETTE_DEPENDENCIES $SSOWAT_DEPENDENCIES $BUILD_DEPENDENCIES $TESTS_DEPENDENCIES"
+	incus exec "$image_to_update" -- /bin/bash -c "python3 -m pip install -U $PIP3_PKG"
 
 	create_snapshot "$image_to_update" "$ynh_version" "$snapshot"
 
-	lxc stop "$image_to_update"
+	incus stop "$image_to_update"
 }
