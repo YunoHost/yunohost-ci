@@ -1,45 +1,129 @@
 #!/usr/bin/env bash
 
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source $current_dir/prints.sh
-source $current_dir/utils.sh # Get utils functions.
+source $current_dir/common.sh
 
 set -eo pipefail
+
+wait_container()
+{
+    restart_container()
+    {
+        incus stop "$1" --timeout 30 || incus stop "$1" --force
+        incus start "$1"
+    }
+
+    # Try to start the container 3 times.
+    local max_try=3
+    local i=0
+    while [ $i -lt $max_try ]
+    do
+        i=$(( i +1 ))
+        local failstart=0
+
+        # Wait for container to start, we are using systemd to check this,
+        # for the sake of brevity.
+        for j in $(seq 1 10); do
+            if incus exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
+                break
+            fi
+
+            if [ "$j" == "10" ]; then
+                error 'Failed to start the container'
+                failstart=1
+
+                restart_container "$1"
+            fi
+
+            sleep 1s
+        done
+
+        # Wait for container to access the internet
+        for j in $(seq 1 10); do
+            if incus exec "$1" -- /bin/bash -c "! which wget > /dev/null 2>&1 || wget -q --spider http://github.com"; then
+                break
+            fi
+
+            if [ "$j" == "10" ]; then
+                error 'Failed to access the internet'
+                failstart=1
+                incus exec "$1" -- /bin/bash -c "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf"
+                incus exec "$1" -- /bin/bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf"
+                incus exec "$1" -- /bin/bash -c "sed -i 's/#IGNORE/IGNORE/g' /etc/default/dnsmasq"
+                incus exec "$1" -- /bin/bash -c "systemctl restart dnsmasq"
+                incus exec "$1" -- /bin/bash -c "journalctl -u dnsmasq -n 100 --no-pager"
+
+                restart_container "$1"
+            fi
+
+            sleep 1s
+        done
+
+        # Wait dpkg
+        for j in $(seq 1 10); do
+            if  ! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1" &&
+                ! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1" &&
+                ! incus exec "$1" -- /bin/bash -c "fuser /var/cache/apt/archives/lock > /dev/null 2>&1"; then
+                break
+            fi
+
+            if [ "$j" == "10" ]; then
+                error 'Waiting too long for lock release'
+                failstart=1
+
+                restart_container "$1"
+            fi
+
+            sleep 1s
+        done
+
+        # Has started and has access to the internet
+        if [ $failstart -eq 0 ]
+        then
+            break
+        fi
+
+        # Fail if the container failed to start
+        if [ $i -eq $max_try ] && [ $failstart -eq 1 ]
+        then
+            # Inform GitLab Runner that this is a system failure, so it
+            # should be retried.
+            exit "$SYSTEM_FAILURE_EXIT_CODE"
+        fi
+    done
+}
 
 # trap any error, and mark it as a system failure.
 trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
-start_container () {
-	if ! incus info "$CONTAINER_IMAGE" >/dev/null 2>/dev/null ; then
-		warn 'Container not found, copying it from the prebuilt image'
-		if ! incus info "$BASE_IMAGE" | grep -w "$CURRENT_VERSION-$SNAPSHOT_NAME" >/dev/null
-		then
-			error "$BASE_IMAGE not found, please rebuild with rebuild_all.sh"
-			# Inform GitLab Runner that this is a system failure, so it
-			# should be retried.
-			exit $SYSTEM_FAILURE_EXIT_CODE
-		fi
-		incus copy "$BASE_IMAGE" "$CONTAINER_IMAGE"
-	fi
-	# Stop the container if it's running
-	if [ "$(incus info $CONTAINER_IMAGE | grep Status | awk '{print tolower($2)}')" == "running" ]; then
-		incus stop $CONTAINER_IMAGE
-	fi
+###############################################################################
 
-	info "Debian version: $DEBIAN_VERSION, YunoHost version: $CURRENT_VERSION, Image used: $BASE_IMAGE, Snapshot: $SNAPSHOT_NAME"
+info "Starting $CONTAINER_NAME from $BASE_IMAGE ..."
 
-	restore_snapshot "$CONTAINER_IMAGE" "$CURRENT_VERSION" "$SNAPSHOT_NAME"
+if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
 
-	# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-	incus config unset "$CONTAINER_IMAGE" volatile.eth0.hwaddr 2> /dev/null
+    # Force the usage of the fingerprint because otherwise for some reason lxd won't use the newer version
+    # available even though it's aware it exists -_-
+    BASE_HASH="$(incus image list yunohost:$BASE_IMAGE --format json | jq -r '.[].fingerprint')"
 
-	incus start $CONTAINER_IMAGE
+    # NB: this image comes from the 'common' image repository shared with the appci, ynh-dev etc
+    incus launch yunohost:$BASE_HASH $CONTAINER_NAME
+fi
 
-	wait_container $CONTAINER_IMAGE
-}
+# Stop the container if it's running
+if [ "$(incus info $CONTAINER_NAME | grep Status | awk '{print tolower($2)}')" == "running" ]; then
+    incus stop "$CONTAINER_NAME" --timeout 30 || incus stop "$CONTAINER_NAME" --force
+fi
 
-info "Starting $CONTAINER_IMAGE"
+# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
+incus start $CONTAINER_NAME
 
-start_container
+sleep 2
 
-info "$CONTAINER_IMAGE started properly"
+incus exec $CONTAINER_NAME dhclient eth0
+
+info "Waiting for $CONTAINER_NAME to finish booting and making sure it's connected to the internetz..."
+
+wait_container $CONTAINER_NAME
+
+success "$CONTAINER_NAME started properly"

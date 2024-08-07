@@ -1,42 +1,22 @@
 #!/usr/bin/env bash
 
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source $current_dir/variables.sh # Get variables from variables.
+source $current_dir/common.sh
 
-case ${2} in
-	prepare_script)
-		echo "CI OPEN: $CUSTOM_ENV_CI_OPEN_MERGE_REQUESTS / CI PIPELINE SOURCE: $CUSTOM_ENV_CI_PIPELINE_SOURCE / REF NAME: $CUSTOM_ENV_CI_COMMIT_REF_NAME / COMMIT: $CUSTOM_ENV_CI_COMMIT_BRANCH, TAG: $CUSTOM_ENV_CI_COMMIT_TAG"
-		;;
-	get_sources)
-		;;
-	restore_cache)
-		;;
-	download_artifacts)
-		;;
-	# build_script is now step_script
-	# but we can also have "step_release" or "step_accessibility"
-	# More info here:
-	# https://docs.gitlab.com/runner/executors/custom.html#run
-	# https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26426
-	step_*)
-		case $PROJECT_NAME in
-			yunohost)
-				# Nothing to do?
-			;;
-		esac
-		;;
-	after_script)
-		;;
-	archive_cache)
-		;;
-	upload_artifact_on_success)
-		;;
-	upload_artifact_on_failure)
-		;;
-esac
+# This script is called multiple times with different stage ($2) value
+# This is documented in https://docs.gitlab.com/runner/executors/custom.html#run
+JOB_STAGE=$2
+if [[ "$JOB_STAGE" == "prepare_script" ]]
+then
+    echo "CI OPEN: $CUSTOM_ENV_CI_OPEN_MERGE_REQUESTS / CI PIPELINE SOURCE: $CUSTOM_ENV_CI_PIPELINE_SOURCE / REF NAME: $CUSTOM_ENV_CI_COMMIT_REF_NAME / COMMIT: $CUSTOM_ENV_CI_COMMIT_BRANCH, TAG: $CUSTOM_ENV_CI_COMMIT_TAG"
+fi
 
+###############################################################################
 
-incus exec "$CONTAINER_IMAGE" /bin/bash < "${1}"
+# This is the real 'important' logic bit
+incus exec "$CONTAINER_NAME" /bin/bash < "${1}"
+
+###############################################################################
 err=$?
 if [ $err -ne 0 ]; then
 	echo "Exit with error code $err"
