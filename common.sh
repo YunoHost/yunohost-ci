@@ -29,7 +29,7 @@ else
     RELEASE="testing"
 fi
 
-BASE_IMAGE="ynh-$IMAGE-bullseye-amd64-$RELEASE-base"
+BASE_IMAGE="ynh-$IMAGE-$DEBIAN-amd64-$RELEASE-base"
 
 if [[ $IMAGE == "build-and-lint" ]]
 then
