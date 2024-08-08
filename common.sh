@@ -19,21 +19,21 @@ CURRENT_BRANCH="${CUSTOM_ENV_CI_COMMIT_REF_NAME:-$DEFAULT_BRANCH}" # CUSTOM_ENV_
 
 IMAGE="${CUSTOM_ENV_CI_JOB_IMAGE:-after-install}"
 
-LAST_CHANGELOG_ENTRY=$(curl $CUSTOM_ENV_CI_PROJECT_URL/-/raw/$CURRENT_BRANCH/debian/changelog --silent | head -n 1) # yunohost (4.2) unstable; urgency=low
-DEBIAN_VERSION_NUMBER=$(echo $LAST_CHANGELOG_ENTRY | cut -d' ' -f2 | tr -d '(' | tr -d ')' | cut -d'.' -f1) # 11, 12
-if [[ "$DEBIAN_VERSION_NUMBER" == "11" ]]
+[[ -n "$CUSTOM_ENV_CI_YNH_DEBIAN" ]] || { echo "Undefined ynh debian var?"; exit 1; }
+DEBIAN=$CUSTOM_ENV_CI_YNH_DEBIAN
+
+if [[ "$DEBIAN" == "bullseye" ]]
 then
-	BASE_IMAGE="ynh-$IMAGE-bullseye-amd64-stable-base"
-elif [[ "$DEBIAN_VERSION_NUMBER" == "12" ]]
-then
-	BASE_IMAGE="ynh-$IMAGE-bookworm-amd64-testing-base"
-elif [[ "$DEBIAN_VERSION_NUMBER" == "13" ]]
-then
-	# Upcoming someday™
-	BASE_IMAGE="ynh-$IMAGE-trixie-amd64-unstable-base"
+    RELEASE="stable"
 else
-	echo "Uhoh, unknown debian version $DEBIAN_VERSION_NUMBER"
-	exit 1
+    RELEASE="testing"
 fi
 
-CONTAINER_NAME="job-$CUSTOM_ENV_CI_JOB_ID-$CUSTOM_ENV_CI_JOB_NAME_SLUG"
+BASE_IMAGE="ynh-$IMAGE-bullseye-amd64-$RELEASE-base"
+
+if [[ $IMAGE == "build-and-lint" ]]
+then
+    CONTAINER_NAME="$DEBIAN-build-and-lint"
+else
+    CONTAINER_NAME="job-$CUSTOM_ENV_CI_JOB_ID-$CUSTOM_ENV_CI_JOB_NAME_SLUG"
+fi

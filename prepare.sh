@@ -98,9 +98,8 @@ trap "exit $SYSTEM_FAILURE_EXIT_CODE" ERR
 
 ###############################################################################
 
-info "Starting $CONTAINER_NAME from $BASE_IMAGE ..."
-
 if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
+    info "Starting $CONTAINER_NAME from $BASE_IMAGE ..."
 
     # Force the usage of the fingerprint because otherwise for some reason lxd won't use the newer version
     # available even though it's aware it exists -_-
@@ -108,17 +107,18 @@ if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
 
     # NB: this image comes from the 'common' image repository shared with the appci, ynh-dev etc
     incus launch yunohost:$BASE_HASH $CONTAINER_NAME
+    sleep 2
 fi
 
-# Stop the container if it's running
-if [ "$(incus info $CONTAINER_NAME | grep Status | awk '{print tolower($2)}')" == "running" ]; then
-    incus stop "$CONTAINER_NAME" --timeout 30 || incus stop "$CONTAINER_NAME" --force
+# Start the container if it's not running
+if [ "$(incus info $CONTAINER_NAME | grep Status | awk '{print tolower($2)}')" != "running" ]; then
+    incus start $CONTAINER_NAME
 fi
 
-# Unset the mac address to ensure the copy will get a new one and will be able to get new IP
-incus start $CONTAINER_NAME
-
-sleep 2
+if [[ $IMAGE == "build-and-lint" ]]
+then
+    exit 0
+fi
 
 incus exec $CONTAINER_NAME dhclient eth0
 
