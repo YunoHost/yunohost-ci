@@ -5,10 +5,11 @@ source $current_dir/common.sh
 
 if [[ $IMAGE == "build-and-lint" ]]
 then
-    echo "Should cleanup $CUSTOM_ENV_CI_GIT_CLONE_PATH ?"
+    incus exec $CONTAINER_NAME -- rm -rf $CUSTOM_ENV_GIT_CLONE_PATH
+    incus exec $CONTAINER_NAME -- rm -rf $CUSTOM_ENV_GIT_CLONE_PATH.tmp
+    incus exec $CONTAINER_NAME -- rmdir $(dirname $CUSTOM_ENV_GIT_CLONE_PATH) || true
     exit 0
 fi
-
 
 info "Stopping container $CONTAINER_NAME"
 
