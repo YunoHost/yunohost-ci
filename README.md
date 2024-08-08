@@ -59,6 +59,8 @@ check_interval = 0
     prepare_exec = "/opt/yunohost-ci/prepare.sh" # Path to a bash script to create lxd container and download dependencies.
     run_exec = "/opt/yunohost-ci/run.sh" # Path to a bash script to run script inside the container.
     cleanup_exec = "/opt/yunohost-ci/cleanup.sh" # Path to bash script to delete container.
+  [runners.custom_build_dir]
+    enabled = true
 ```
 
 ## Using images
