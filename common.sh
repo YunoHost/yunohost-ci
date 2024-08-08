@@ -19,8 +19,8 @@ CURRENT_BRANCH="${CUSTOM_ENV_CI_COMMIT_REF_NAME:-$DEFAULT_BRANCH}" # CUSTOM_ENV_
 
 IMAGE="${CUSTOM_ENV_CI_JOB_IMAGE:-after-install}"
 
-[[ -n "$CUSTOM_ENV_CI_YNH_DEBIAN" ]] || { echo "Undefined ynh debian var?"; exit 1; }
-DEBIAN=$CUSTOM_ENV_CI_YNH_DEBIAN
+[[ -n "$CUSTOM_ENV_YNH_DEBIAN" ]] || { echo "Undefined ynh debian var?"; exit 1; }
+DEBIAN=$CUSTOM_ENV_YNH_DEBIAN
 
 if [[ "$DEBIAN" == "bullseye" ]]
 then
