@@ -106,7 +106,7 @@ if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
     BASE_HASH="$(incus image list yunohost:$BASE_IMAGE --format json | jq -r '.[].fingerprint')"
 
     # NB: this image comes from the 'common' image repository shared with the appci, ynh-dev etc
-    incus launch yunohost:$BASE_HASH $CONTAINER_NAME
+    incus launch yunohost:$BASE_HASH $CONTAINER_NAME -c security.privileged=true -c security.nesting=true
     sleep 2
 fi
 
