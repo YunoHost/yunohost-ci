@@ -29,7 +29,7 @@ else
     RELEASE="testing"
 fi
 
-BASE_IMAGE="ynh-$IMAGE-$DEBIAN-amd64-$RELEASE-base"
+BASE_IMAGE="yunohost/${DEBIAN}-${RELEASE}/${IMAGE}"
 
 if [[ $IMAGE == "build-and-lint" ]]
 then
