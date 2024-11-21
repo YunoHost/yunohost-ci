@@ -19,20 +19,22 @@ CURRENT_BRANCH="${CUSTOM_ENV_CI_COMMIT_REF_NAME:-$DEFAULT_BRANCH}" # CUSTOM_ENV_
 
 IMAGE="${CUSTOM_ENV_CI_JOB_IMAGE:-after-install}"
 
-[[ -n "$CUSTOM_ENV_YNH_DEBIAN" ]] || { echo "Undefined ynh debian var?"; exit 1; }
+if [[ -z "$CUSTOM_ENV_YNH_DEBIAN" ]]; then
+    echo "Undefined ynh debian var?"
+    exit 1
+fi
 DEBIAN=$CUSTOM_ENV_YNH_DEBIAN
 
-if [[ "$DEBIAN" == "bullseye" ]]
-then
-    RELEASE="stable"
-else
-    RELEASE="testing"
-fi
+case "$DEBIAN" in
+    bullseye) RELEASE=stable ;;
+    bookworm) RELEASE=testing ;;
+    trixie) RELEASE=unstable ;;
+    *) echo "Unknow debian release '$DEBIAN'" ; exit 1 ;;
+esac
 
 BASE_IMAGE="yunohost/${DEBIAN}-${RELEASE}/${IMAGE}"
 
-if [[ $IMAGE == "build-and-lint" ]]
-then
+if [[ $IMAGE == "build-and-lint" ]]; then
     CONTAINER_NAME="$DEBIAN-build-and-lint"
 else
     CONTAINER_NAME="job-$CUSTOM_ENV_CI_JOB_ID-$CUSTOM_ENV_CI_JOB_NAME_SLUG"
