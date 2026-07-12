@@ -103,7 +103,7 @@ if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
 
     # Force the usage of the fingerprint because otherwise for some reason lxd won't use the newer version
     # available even though it's aware it exists -_-
-    BASE_HASH="$(incus image list yunohost:$BASE_IMAGE --format json | jq -r '.[].fingerprint')"
+    BASE_HASH="$(incus image info yunohost:$BASE_IMAGE | awk '/^Fingerprint:/ {print $2}')"
 
     # NB: this image comes from the 'common' image repository shared with the appci, ynh-dev etc
     incus launch yunohost:$BASE_HASH $CONTAINER_NAME -c security.privileged=true -c security.nesting=true
