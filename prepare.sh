@@ -23,28 +23,28 @@ wait_container()
 
         # Wait for container to start, we are using systemd to check this,
         # for the sake of brevity.
-        for j in $(seq 1 10); do
+        for j in $(seq 1 50); do
             if incus exec "$1" -- /bin/bash -c "systemctl isolate multi-user.target" >/dev/null 2>/dev/null; then
                 break
             fi
 
-            if [ "$j" == "10" ]; then
+            if [ "$j" == "50" ]; then
                 error 'Failed to start the container'
                 failstart=1
 
                 restart_container "$1"
             fi
 
-            sleep 1s
+            sleep 0.2
         done
 
         # Wait for container to access the internet
-        for j in $(seq 1 10); do
+        for j in $(seq 1 50); do
             if incus exec "$1" -- /bin/bash -c "! which wget > /dev/null 2>&1 || wget -q --spider http://github.com"; then
                 break
             fi
 
-            if [ "$j" == "10" ]; then
+            if [ "$j" == "50" ]; then
                 error 'Failed to access the internet'
                 failstart=1
                 incus exec "$1" -- /bin/bash -c "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf"
@@ -56,25 +56,25 @@ wait_container()
                 restart_container "$1"
             fi
 
-            sleep 1s
+            sleep 0.2
         done
 
         # Wait dpkg
-        for j in $(seq 1 10); do
+        for j in $(seq 1 50); do
             if  ! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock > /dev/null 2>&1" &&
                 ! incus exec "$1" -- /bin/bash -c "fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1" &&
                 ! incus exec "$1" -- /bin/bash -c "fuser /var/cache/apt/archives/lock > /dev/null 2>&1"; then
                 break
             fi
 
-            if [ "$j" == "10" ]; then
+            if [ "$j" == "50" ]; then
                 error 'Waiting too long for lock release'
                 failstart=1
 
                 restart_container "$1"
             fi
 
-            sleep 1s
+            sleep 0.2
         done
 
         # Has started and has access to the internet
@@ -107,7 +107,6 @@ if ! incus info "$CONTAINER_NAME" >/dev/null 2>/dev/null ; then
 
     # NB: this image comes from the 'common' image repository shared with the appci, ynh-dev etc
     incus launch yunohost:$BASE_HASH $CONTAINER_NAME -c security.privileged=true -c security.nesting=true
-    sleep 2
 fi
 
 # Start the container if it's not running
@@ -120,7 +119,13 @@ then
     exit 0
 fi
 
-incus exec $CONTAINER_NAME dhclient eth0
+# Right after launch, eth0 may not be up yet, so retry a few times
+for i in $(seq 1 20); do
+    if incus exec $CONTAINER_NAME dhclient eth0; then
+        break
+    fi
+    sleep 0.2
+done
 
 info "Waiting for $CONTAINER_NAME to finish booting and making sure it's connected to the internetz..."
 

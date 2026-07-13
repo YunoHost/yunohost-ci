@@ -11,7 +11,6 @@ then
     exit 0
 fi
 
-info "Stopping container $CONTAINER_NAME"
+info "Deleting container $CONTAINER_NAME"
 
-incus stop "$CONTAINER_NAME"
-incus delete "$CONTAINER_NAME"
+incus delete "$CONTAINER_NAME" --force
