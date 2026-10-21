@@ -12,6 +12,7 @@ dependencies = []
 
 [project.scripts]
 yunohost-ci = "yunohost_ci:main"
+update-protos = "yunohost_ci.update_protos:update_protos"
 
 [tool.uv]
 package = true
