@@ -1,0 +1,28 @@
+[project]
+name = "yunohost-ci"
+version = "0.1.0"
+description = "Forgejo Actions runner plugin for YunoHost Core"
+urls.source = "https://github.com/YunoHost/yunohost-ci"
+authors = [{ name = "YunoHost" }]
+readme = "README.md"
+
+requires-python = ">=3.12"
+dependencies = []
+
+
+[project.scripts]
+yunohost-ci = "yunohost_ci:main"
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 120
+
+lint.select = ["ALL"]
+lint.ignore = [
+]
+
+[tool.mypy]
+strict = true
+warn_unused_ignores = false
