@@ -15,7 +15,6 @@ PROTOS: dict[str, str] = {
 
 def update_protos() -> None:
 
-
     for filename, url in PROTOS.items():
         resp = httpx2.get(url, timeout=20)
         file = PROTOS_DIR / filename
@@ -24,11 +23,16 @@ def update_protos() -> None:
         proto_include = protoc._get_resource_file_name("grpc_tools", "_proto")
         args = [
             protoc.__file__,
-            "-I", str(PROTOS_DIR),
-            "-I", str(proto_include),
-            "--python_out", str(PROTOS_DIR),
-            "--pyi_out", str(PROTOS_DIR),
-            "--grpc_python_out", str(PROTOS_DIR),
+            "-I",
+            str(PROTOS_DIR),
+            "-I",
+            str(proto_include),
+            "--python_out",
+            str(PROTOS_DIR),
+            "--pyi_out",
+            str(PROTOS_DIR),
+            "--grpc_python_out",
+            str(PROTOS_DIR),
             str(file),
         ]
         print(args)

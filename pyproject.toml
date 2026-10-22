@@ -7,7 +7,11 @@ authors = [{ name = "YunoHost" }]
 readme = "README.md"
 
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "httpx2",
+    "grpcio",
+    "grpcio-tools",
+]
 
 
 [project.scripts]
@@ -22,6 +26,34 @@ line-length = 120
 
 lint.select = ["ALL"]
 lint.ignore = [
+    # "C901",     # Too complex
+    "COM812",   # Trailing comma
+    "CPY",      # Copyright strings
+    "D",        # Docstrings
+    # "EM101",    # Exception must not use a string literal, assign to variable first
+    # "EM102",    # Exception must not use an f-string literal, assign to variable first
+    "ERA001",   # Commented-out code
+    "EXE001",   # Shebangs
+    # "FIX001",   # Fixmes
+    # "G004",     # Logging statement uses f-string
+    "LOG015",   # Use of root logger
+    # "PLR0911",  # too-many-return-statements
+    # "PLR0912",  # too-many-branches
+    # "PLR0913",  # too-many-arguments
+    # "PLR0915",  # too-many-statements
+    # "PLR2004",  # magic-value-comparison
+    # "PLW0603",  # Using globals
+    # "RUF010",   # f-string explicit conversion flag
+    # "S101",     # Use of `assert` detected
+    # "S105",     # Possible hardcoded password
+    # "S603",     # `subprocess` call: check for execution of untrusted input
+    # "S607",     # Subprocess with partial path
+    # "SIM108",   # Don't force ternary expressions
+    "T201",     # `print` found
+    # "TC003",    # Move standard library import into a type-checking block
+    # "TD",       # TODO format
+    # "TRY003",   # raise-vanilla-args
+    # "TRY400",   # error-instead-of-exception
 ]
 
 [tool.mypy]
