@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
+import logging
 import shutil
 import tarfile
-from pathlib import Path, PurePath
-import logging
 from collections.abc import Iterator
 from concurrent import futures
+from pathlib import Path, PurePath
 from typing import override
 
 import grpc
 
 from .protos import health_pb2, health_pb2_grpc, plugin_pb2, plugin_pb2_grpc
 from .runner import YunohostCIRunner
+
 
 class Generator:
     def __init__(self, gen):
@@ -59,8 +60,9 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
             raise RuntimeError(msg)
         return self.environments[environment_id]
 
-    def _sendline(self, line: str) -> plugin_pb2.DataChunk:
-        return plugin_pb2.DataChunk(data=line.encode())
+    def _sendline(self, line: str, *, stderr: bool = False) -> plugin_pb2.DataChunk:
+        stream = plugin_pb2.DataChunk.Stream.STDERR if stderr else plugin_pb2.DataChunk.Stream.STDOUT
+        return plugin_pb2.DataChunk(data=line.encode(), stream=stream)
 
     @override
     def Capabilities(
@@ -79,10 +81,10 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
         return plugin_pb2.CreateResponse(
             environment_id=env_id,
-            root_path=str(runner.workdir),
-            act_path=str(runner.workdir),
-            tool_cache_path=str(runner.workdir),
-            temp_path=str(runner.workdir),
+            root_path=str(runner.root_path),
+            act_path=str(runner.act_path),
+            tool_cache_path=str(runner.tool_cache_path),
+            temp_path=str(runner.temp_path),
             environment_case_insensitive=True,
             os="Linux",
             arch="x64",
@@ -130,7 +132,7 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
             tar.extractall(temp_dest_dir, filter="data")
         temp_tar_file.unlink()
 
-        runner.push_dir(temp_dest_dir, PurePath(path))
+        runner.push(temp_dest_dir, PurePath(path))
         shutil.rmtree(temp_dest_dir)
 
         return plugin_pb2.CopyInResponse()
@@ -146,7 +148,8 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
         temp_dest_dir = self.tempdir / f"{env_id}.pull"
         temp_tar_file = self.tempdir / f"{env_id}.pull.tar"
 
-        runner.pull_dir(PurePath(path), temp_dest_dir)
+        temp_dest_dir.mkdir(exist_ok=True)
+        runner.pull(PurePath(path), temp_dest_dir)
 
         with tarfile.open(temp_tar_file, "w") as tar:
             tar.add(temp_dest_dir, arcname=temp_dest_dir.name)
@@ -157,26 +160,27 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
                 yield plugin_pb2.CopyOutChunk(data=chunk)
         temp_tar_file.unlink()
 
-
     @override
     def Exec(self, request: plugin_pb2.ExecRequest, context: grpc.ServicerContext) -> Iterator[plugin_pb2.ExecOutput]:
         logging.debug("Plugin Exec called")
         runner = self._ensure_runner(request.environment_id)
 
-        exec_log = Generator(runner.exec(
-            list(request.command),
-            user=request.user,
-            workdir=PurePath(request.workdir),
-            env=dict(request.env),
-        ))
+        exec_log = Generator(
+            runner.exec(
+                list(request.command),
+                user=request.user,
+                workdir=PurePath(request.workdir),
+                env=dict(request.env),
+            )
+        )
 
         for line in exec_log:
-            yield plugin_pb2.ExecOutput(data=self._sendline(line))
+            yield plugin_pb2.ExecOutput(data=self._sendline(line, stderr=False))
 
         returncode = exec_log.value
-        complete=plugin_pb2.ExecComplete(exit_code=returncode)
-        failed=plugin_pb2.ExecFailed(error_message=f"Failed with code {returncode}") if returncode else None
-        yield plugin_pb2.ExecOutput(exec_complete=complete, exec_failed=failed)
+        complete = plugin_pb2.ExecComplete(exit_code=returncode)
+        # failed=plugin_pb2.ExecFailed(error_message=f"Failed with code {returncode}") if returncode else None
+        yield plugin_pb2.ExecOutput(exec_complete=complete)
 
 
 def init_server(tempdir: Path) -> grpc.Server:

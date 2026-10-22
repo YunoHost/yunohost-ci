@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import subprocess
 import shutil
 from collections.abc import Generator
 from pathlib import Path, PurePath
@@ -7,10 +8,17 @@ from pathlib import Path, PurePath
 
 class YunohostCIRunner:
     def __init__(self, workdir: Path) -> None:
-        self.workdir = workdir
+        self._workdir = workdir
+        self.root_path: PurePath = workdir
+        self.act_path: PurePath = workdir
+        self.tool_cache_path: PurePath = workdir
+        self.temp_path: PurePath = workdir
+
+    def _real_path(self, target: PurePath) -> Path:
+        return self._workdir / target.relative_to("/") if target.is_absolute() else Path(target)
 
     def create(self) -> None:
-        self.workdir.mkdir(exist_ok=True)
+        self._workdir.mkdir(exist_ok=True)
 
     def cleanup(self) -> None:
         # shutil.rmtree(self.workdir)
@@ -20,20 +28,27 @@ class YunohostCIRunner:
         yield "Starting yunohost ci runner..."
         return 0
 
-    def push_dir(self, source: Path, target: PurePath) -> None:
+    def push(self, source: Path, target: PurePath) -> None:
         print(f"Copying {source} to incus container {target}")
-        if 
-        dst = self.workdir / target.relative_to("/")
-        dst.parent.mkdir(exist_ok=True)
-        shutil.copytree(source, dst, dirs_exist_ok=True)
+        real_target = self._real_path(target)
+        real_target.parent.mkdir(exist_ok=True)
+        shutil.copytree(source, real_target, dirs_exist_ok=True)
         # for file in source.iterdir():
         #     print(file)
 
-    def pull_dir(self, source: PurePath, target: Path) -> None:
+    def pull(self, source: PurePath, target: Path) -> None:
         target.parent.mkdir(exist_ok=True)
-        shutil.copytree(self.workdir / source.relative_to("/"), target)
+        real_source = self._real_path(source)
+        real_source.parent.mkdir(exist_ok=True)
+        if real_source.is_dir():
+            shutil.copytree(real_source, target)
+        else:
+            shutil.copy(real_source, target)
 
-    def exec(self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]) -> Generator[str, None, int]:
+    def exec(
+        self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
+    ) -> Generator[str, None, int]:
         print(f"executing {command}...")
-        yield f"Execution line for {command}"
-        return 0
+        result = subprocess.run(command, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        yield from result.stdout.decode().splitlines(keepends=True)
+        return result.returncode
