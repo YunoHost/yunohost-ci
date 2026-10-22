@@ -1,0 +1,246 @@
+// Copyright 2026 The Forgejo Authors. All rights reserved.
+// SPDX-License-Identifier: MIT
+//
+// Licensing note: while most of forgejo/runner is distributed under the terms
+// of GPL-3.0-or-later, this plugin definition file is more permissively
+// licensed under the MIT license.  This choice allows plugin authors to embed
+// it, create derived works of it (e.g. generated source files), and
+// distribute derived products under a wider variety of licenses.
+
+syntax = "proto3";
+
+package plugin.v1alpha;
+
+option go_package = "code.forgejo.org/forgejo/runner/v13/act/plugin/proto/v1alpha;pluginv1alpha";
+
+import "google/protobuf/duration.proto";
+
+// BackendPlugin is the gRPC service a plugin server implements to run jobs in an
+// execution environment it owns (a Kubernetes pod, a VM, ...). The runner
+// connects to a standalone plugin server and drives the environment lifecycle
+// through it. Plugin servers must also expose the standard grpc.health.v1
+// service.
+//
+// For any given environment ID, the runner will not invoke a new RPC while
+// a previous RPS for that environment is outstanding, with one exception:
+// for streaming RPCs, the runner closes or cancels the stream and may
+// immediately invoke a subsequent RPC (typically `Remove`). As teardown of
+// a cancelled stream is not instantaneous, implementations may observe a
+// subsequent RPC invoked while a previous streaming RPC's handler is still
+// executing internally. This behaviour is expected. Exclusive locking of each
+// environment during each RPC is recommended for most implementations to
+// accomodate this, ensuring that a `Remove` operation and the last in-flight
+// RPC operation (currently being cancelled) do not cause internal errors.
+//
+// This is an alpha protocol: it may change in incompatible ways between
+// releases. Errors are reported with gRPC status codes; the runner relies on
+// NotFound (unknown environment_id) and InvalidArgument (malformed request),
+// and treats Unavailable as the plugin being gone. The status message is shown
+// in the job log; no structured error details are defined yet.
+service BackendPlugin {
+  // Capabilities returns the backend's identity, filesystem layout, and the one
+  // feature flag the runner needs. Called once at connection time.
+  rpc Capabilities(CapabilitiesRequest) returns (CapabilitiesResponse);
+
+  // Create provisions a new execution environment. Service containers are
+  // passed here so the backend realises them however fits its platform.
+  rpc Create(CreateRequest) returns (CreateResponse);
+
+  // Start boots a previously created environment.
+  //
+  // Start implementations should detect when the RPC stream is terminated
+  // externally before the command completes, as this will signal explicit job
+  // cancellation, or job timeout. When detected, the implementation should
+  // terminate the startup process on the environment. The Remove RPC for the
+  // environment will follow, even though the Start RPC did not complete.
+  rpc Start(StartRequest) returns (stream StartOutput);
+
+  // Exec runs a command inside the environment, streaming stdout/stderr back.
+  //
+  // Exec implementations should detect when the RPC stream is terminated
+  // externally before the command completes, as this will signal explicit job
+  // cancellation, job timeout, or command timeout. When detected, the
+  // implementation should terminate the running command on the
+  // environment. Implementation should not rely on a failed write to the
+  // output stream as its cancellation signal as some commands produce
+  // infrequent output. (Implementation note: observing context cancellation in
+  // Go, a cancellation-aware select on the response channel in Rust's
+  // `tokio::sync::mspc::Sender::closed()`, or a server-side cancellation
+  // callback in Python/Java.)
+  rpc Exec(ExecRequest) returns (stream ExecOutput);
+
+  // CopyIn transfers a tar archive into the environment.
+  rpc CopyIn(stream CopyInChunk) returns (CopyInResponse);
+
+  // CopyOut transfers a tar archive out of the environment. The runner reads
+  // env files (GITHUB_ENV/OUTPUT/STATE) back this way and parses them itself.
+  rpc CopyOut(CopyOutRequest) returns (stream CopyOutChunk);
+
+  // Remove tears down the environment and releases its resources.
+  rpc Remove(RemoveRequest) returns (RemoveResponse);
+}
+
+message CapabilitiesRequest {}
+
+message CapabilitiesResponse {
+  reserved 2, 3, 4, 5, 6, 7; // variables moved to create to allow one plugin to support different OSes
+  // name identifies the backend (e.g. "kubernetes"); used in logs and as the
+  // container back-end name.
+  string name = 1;
+}
+
+message ServiceContainer {
+  // name is the service ID from the workflow `services:` block.
+  string name = 1;
+  // image is the backend-defined image reference for the service.
+  string image = 2;
+  // env are the service container's environment variables.
+  map<string, string> env = 3;
+  // ports are host:container port mappings requested for the service.
+  repeated string ports = 4;
+}
+
+message CreateRequest {
+  reserved 3, 4; // env & working dir removed, already present in ExecRequest
+
+  // image is the backend-defined reference for the job container image, opaque
+  // to the protocol (a Docker image name, a VM template, ...).
+  string image = 1;
+  // name is a runner-assigned handle for the environment, unique per job.
+  string name = 2;
+  // cap_add / cap_drop are advisory Linux capability adjustments; backends that
+  // cannot apply them ignore them.
+  repeated string cap_add = 5;
+  repeated string cap_drop = 6;
+  // services are the service containers to bring up alongside the job.
+  repeated ServiceContainer services = 7;
+  // backend_options are opaque, backend-specific options taken verbatim from
+  // the runner's per-label plugin configuration (e.g. namespace, VM flavour).
+  map<string, string> backend_options = 8;
+  // label_arg is the optional suffix of the runs-on plugin label.
+  string label_arg = 9;
+  // environment_timeout limits the lifetime of this execution environment.
+  google.protobuf.Duration environment_timeout = 10;
+}
+
+message CreateResponse {
+  // environment_id is the handle for all later RPCs targeting this environment.
+  string environment_id = 1;
+  // root_path is the base directory the runner lays workflow files out
+  // under.
+  string root_path = 2;
+  // act_path is the directory where the runner stages its helper binaries and
+  // action code.
+  string act_path = 3;
+  // tool_cache_path is exposed to jobs as RUNNER_TOOL_CACHE.
+  string tool_cache_path = 4;
+  // temp_path is exposed to jobs as RUNNER_TEMP.
+  string temp_path = 5;
+
+  // path_variable_name is the search-path environment variable; the runner uses
+  // "PATH" when unset.
+  optional string path_variable_name = 6;
+  // default_path_variable is the search path used when a job sets none.
+  optional string default_path_variable = 7;
+  // path_separator joins path entries; the runner uses ":" when unset.
+  optional string path_separator = 8;
+  // environment_case_insensitive marks environments whose variable names are
+  // case-insensitive (Windows), so the runner de-duplicates accordingly.
+  bool environment_case_insensitive = 9;
+  // os populates the RUNNER_OS environment variable exposed to the job.
+  string os = 10;
+  // arch populates the RUNNER_ARCH environment variable exposed to the job.
+  string arch = 11;
+}
+
+message StartRequest {
+  string environment_id = 1;
+}
+
+message StartOutput {
+  oneof Output {
+    DataChunk data = 1;
+    StartComplete start_complete = 2;
+  }
+}
+
+message StartComplete {
+  // image_env are environment variables baked into the resolved image (e.g. a
+  // Docker image's ENV). The runner layers them under the job's own variables.
+  map<string, string> image_env = 1;
+}
+
+message ExecRequest {
+  string environment_id = 1;
+  // command is the argv to run; command[0] is the executable.
+  repeated string command = 2;
+  // env are environment variables to set for this command.
+  map<string, string> env = 3;
+  // user is the user to run as; the backend's default is used when unset.
+  optional string user = 4;
+  // workdir overrides the working directory for this command; the environment's
+  // default is used when unset.
+  string workdir = 5;
+}
+
+message ExecOutput {
+  oneof Output {
+    DataChunk data = 1;
+    ExecComplete exec_complete = 2;
+    ExecFailed exec_failed = 3;
+  }
+}
+
+message DataChunk {
+  enum Stream {
+    STDOUT = 0;
+    STDERR = 1;
+  }
+  // stream identifies which output data belongs to.
+  Stream stream = 1;
+  // data is a chunk of output bytes.
+  bytes data = 2;
+}
+
+message ExecComplete {
+  // exit_code is the command's exit status; only set on the final message.
+  int32 exit_code = 1;
+}
+
+message ExecFailed {
+  // error_message describes a failure to run the command (as opposed to the
+  // command failing); only set on the final message.
+  string error_message = 1;
+}
+
+// CopyInChunk frames the client-streaming CopyIn RPC. The first chunk MUST set
+// environment_id and dest_path; subsequent chunks carry only data. Servers MUST
+// reject environment_id or dest_path on later chunks with codes.InvalidArgument.
+message CopyInChunk {
+  optional string environment_id = 1;
+  // dest_path is the directory the tar archive is extracted into. The plugin
+  // must ensure that the destination folder exists in the target environment
+  // before extracting the incoming data stream.
+  optional string dest_path = 2;
+  // data is a chunk of the tar archive.
+  bytes data = 3;
+}
+
+message CopyInResponse {}
+
+message CopyOutRequest {
+  string environment_id = 1;
+  // src_path is the path inside the environment to archive and stream out.
+  string src_path = 2;
+}
+
+message CopyOutChunk {
+  // data is a chunk of the tar archive.
+  bytes data = 1;
+}
+
+message RemoveRequest {
+  string environment_id = 1;
+}
+
+message RemoveResponse {}
