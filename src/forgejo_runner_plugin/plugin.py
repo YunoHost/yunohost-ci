@@ -3,24 +3,32 @@
 import logging
 import shutil
 import tarfile
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from concurrent import futures
 from pathlib import Path, PurePath
-from typing import override
+from typing import Protocol, override
 
 import grpc
 
+from .generator import GeneratorWrapper
 from .protos import health_pb2, health_pb2_grpc, plugin_pb2, plugin_pb2_grpc
-from .runner import YunohostCIRunner
 
 
-class Generator:
-    def __init__(self, gen):
-        self.gen = gen
+class ForgejoActionRunner(Protocol):
+    root_path: PurePath
+    act_path: PurePath
+    tool_cache_path: PurePath
+    temp_path: PurePath
 
-    def __iter__(self):
-        self.value = yield from self.gen
-        return self.value
+    def __init__(self, workdir: Path) -> None: ...
+    def create(self) -> None: ...
+    def cleanup(self) -> None: ...
+    def start(self) -> Generator[str, None, int]: ...
+    def push(self, source: Path, target: PurePath) -> None: ...
+    def pull(self, source: PurePath, target: Path) -> None: ...
+    def exec(
+        self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
+    ) -> Generator[tuple[str, str], None, int]: ...
 
 
 class Health(health_pb2_grpc.HealthServicer):
@@ -46,15 +54,15 @@ class Health(health_pb2_grpc.HealthServicer):
     #     pass
 
 
-class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
-    name = "yunohost-ci"
-
-    def __init__(self, tempdir: Path) -> None:
+class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
+    def __init__(self, name: str, tempdir: Path, runner_class: type[ForgejoActionRunner]) -> None:
+        self.name = name
         self.tempdir = tempdir
-        self.environments: dict[str, YunohostCIRunner] = {}
+        self.runner_class = runner_class
+        self.environments: dict[str, ForgejoActionRunner] = {}
         super().__init__()
 
-    def _ensure_runner(self, environment_id: str) -> YunohostCIRunner:
+    def _ensure_runner(self, environment_id: str) -> ForgejoActionRunner:
         if environment_id not in self.environments:
             msg = f"Could not find environment '{environment_id}'"
             raise RuntimeError(msg)
@@ -76,7 +84,7 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
         logging.debug("Plugin Create called")
         print(request)
         env_id = f"{request.image}-{request.name}"
-        runner = YunohostCIRunner(self.tempdir / f"{env_id}.workdir")
+        runner = self.runner_class(self.tempdir / f"{env_id}.workdir")
         self.environments[env_id] = runner
 
         return plugin_pb2.CreateResponse(
@@ -105,7 +113,7 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
         # yield plugin_pb2.StartOutput(data=plugin_pb2.DataChunk(b"toto this is a log line"))
 
         runner = self._ensure_runner(request.environment_id)
-        start_log = Generator(runner.start())
+        start_log = GeneratorWrapper(runner.start())
         for line in start_log:
             yield plugin_pb2.StartOutput(data=self._sendline(line))
         yield plugin_pb2.StartOutput(start_complete=plugin_pb2.StartComplete(image_env={}))
@@ -165,27 +173,32 @@ class YunohostPlugin(plugin_pb2_grpc.BackendPluginServicer):
         logging.debug("Plugin Exec called")
         runner = self._ensure_runner(request.environment_id)
 
-        exec_log = Generator(
-            runner.exec(
-                list(request.command),
-                user=request.user,
-                workdir=PurePath(request.workdir),
-                env=dict(request.env),
+        try:
+            exec_log = GeneratorWrapper(
+                runner.exec(
+                    list(request.command),
+                    user=request.user,
+                    workdir=PurePath(request.workdir),
+                    env=dict(request.env),
+                )
             )
-        )
+        except Exception as err:  # noqa: BLE001
+            yield plugin_pb2.ExecOutput(exec_failed=plugin_pb2.ExecFailed(error_message=str(err)))
+            return
 
-        for line in exec_log:
-            yield plugin_pb2.ExecOutput(data=self._sendline(line, stderr=False))
+        for stdout, stderr in exec_log:
+            if stdout:
+                yield plugin_pb2.ExecOutput(data=self._sendline(stdout, stderr=False))
+            if stderr:
+                yield plugin_pb2.ExecOutput(data=self._sendline(stderr, stderr=True))
 
-        returncode = exec_log.value
+        returncode = exec_log.returned
         complete = plugin_pb2.ExecComplete(exit_code=returncode)
-        # failed=plugin_pb2.ExecFailed(error_message=f"Failed with code {returncode}") if returncode else None
         yield plugin_pb2.ExecOutput(exec_complete=complete)
 
 
-def init_server(tempdir: Path) -> grpc.Server:
+def init_server(name: str, tempdir: Path, runner_class: type[ForgejoActionRunner]) -> grpc.Server:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     health_pb2_grpc.add_HealthServicer_to_server(Health(), server)
-    plugin_pb2_grpc.add_BackendPluginServicer_to_server(YunohostPlugin(tempdir), server)
-
+    plugin_pb2_grpc.add_BackendPluginServicer_to_server(ForgejoPlugin(name, tempdir, runner_class), server)
     return server

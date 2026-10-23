@@ -34,7 +34,7 @@ lint.ignore = [
     # "EM102",    # Exception must not use an f-string literal, assign to variable first
     "ERA001",   # Commented-out code
     "EXE001",   # Shebangs
-    # "FIX001",   # Fixmes
+    "FIX001",   # Fixmes
     # "G004",     # Logging statement uses f-string
     "LOG015",   # Use of root logger
     # "PLR0911",  # too-many-return-statements
@@ -51,9 +51,18 @@ lint.ignore = [
     # "SIM108",   # Don't force ternary expressions
     "T201",     # `print` found
     # "TC003",    # Move standard library import into a type-checking block
-    # "TD",       # TODO format
+    "TD",       # TODO format
     # "TRY003",   # raise-vanilla-args
     # "TRY400",   # error-instead-of-exception
+]
+
+exclude = [
+    "src/forgejo_runner_plugin/protos",
+]
+
+[tool.ty]
+src.exclude = [
+    "src/forgejo_runner_plugin/protos",
 ]
 
 [tool.mypy]

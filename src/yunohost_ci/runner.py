@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-import subprocess
 import shutil
+import subprocess
 from collections.abc import Generator
 from pathlib import Path, PurePath
 
+from forgejo_runner_plugin import ForgejoActionRunner
 
-class YunohostCIRunner:
+
+class YunohostCIRunner(ForgejoActionRunner):
     def __init__(self, workdir: Path) -> None:
         self._workdir = workdir
         self.root_path: PurePath = workdir
@@ -47,8 +49,11 @@ class YunohostCIRunner:
 
     def exec(
         self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
-    ) -> Generator[str, None, int]:
+    ) -> Generator[tuple[str, str], None, int]:
         print(f"executing {command}...")
-        result = subprocess.run(command, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-        yield from result.stdout.decode().splitlines(keepends=True)
+        result = subprocess.run(command, shell=False, capture_output=True, check=False)
+        for line in result.stdout.decode().splitlines(keepends=True):
+            yield (line, "")
+        for line in result.stderr.decode().splitlines(keepends=True):
+            yield ("", line)
         return result.returncode

@@ -4,7 +4,9 @@ import argparse
 import logging
 from pathlib import Path
 
-from .plugin import init_server
+from forgejo_runner_plugin import init_server
+
+from .runner import YunohostCIRunner
 
 
 def main() -> None:
@@ -19,7 +21,7 @@ def main() -> None:
 
     logging.getLogger().setLevel(logging.DEBUG)
 
-    server = init_server(tempdir=tempdir)
+    server = init_server("yunohost-ci", tempdir=tempdir, runner_class=YunohostCIRunner)
     server.add_insecure_port(f"[::]:{args.port}")
     server.start()
     print(f"Server started, listening on {port}")

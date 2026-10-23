@@ -14,13 +14,11 @@ PROTOS: dict[str, str] = {
 
 
 def update_protos() -> None:
-
     for filename, url in PROTOS.items():
         resp = httpx2.get(url, timeout=20)
         file = PROTOS_DIR / filename
         file.write_bytes(resp.content)
-
-        proto_include = protoc._get_resource_file_name("grpc_tools", "_proto")
+        proto_include = protoc._get_resource_file_name("grpc_tools", "_proto")  # noqa: SLF001
         args = [
             protoc.__file__,
             "-I",
@@ -35,5 +33,4 @@ def update_protos() -> None:
             str(PROTOS_DIR),
             str(file),
         ]
-        print(args)
         protoc.main(args)
