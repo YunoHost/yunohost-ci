@@ -3,6 +3,7 @@
 import logging
 import shutil
 import tarfile
+from abc import abstractmethod
 from collections.abc import Generator, Iterator
 from pathlib import Path, PurePath
 from typing import Protocol, override
@@ -19,12 +20,32 @@ class ForgejoActionRunner(Protocol):
     tool_cache_path: PurePath
     temp_path: PurePath
 
-    def __init__(self, workdir: Path) -> None: ...
-    def create(self) -> None: ...
+    @classmethod
+    @abstractmethod
+    def create(
+        cls,
+        name: str,
+        image: str,
+        label: str,
+        capabilities: tuple[list[str], list[str]],
+        options: dict[str, str],
+        timeout: int,
+        workdir: Path,
+    ) -> "ForgejoActionRunner": ...
+
+    @abstractmethod
     def cleanup(self) -> None: ...
+
+    @abstractmethod
     def start(self) -> Generator[str, None, int]: ...
+
+    @abstractmethod
     def push(self, source: Path, target: PurePath) -> None: ...
+
+    @abstractmethod
     def pull(self, source: PurePath, target: Path) -> None: ...
+
+    @abstractmethod
     def exec(
         self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
     ) -> Generator[tuple[str, str], None, int]: ...
@@ -83,7 +104,15 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         logging.debug("Plugin Create called")
         print(request)
         env_id = f"{request.image}-{request.name}"
-        runner = self.runner_class(self.tempdir / f"{env_id}.workdir")
+        runner = self.runner_class.create(
+            request.name,
+            request.image,
+            request.label_arg,
+            (list(request.cap_add), list(request.cap_drop)),
+            dict(request.backend_options),
+            request.environment_timeout.seconds,
+            self.tempdir / f"{env_id}.workdir",
+        )
         self.environments[env_id] = runner
 
         return plugin_pb2.CreateResponse(

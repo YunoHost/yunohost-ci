@@ -4,23 +4,40 @@ import shutil
 import subprocess
 from collections.abc import Generator
 from pathlib import Path, PurePath
+from typing import final
 
 from forgejo_runner_plugin import ForgejoActionRunner
 
 
+@final
 class YunohostCIRunner(ForgejoActionRunner):
-    def __init__(self, workdir: Path) -> None:
+    def __init__(self, name: str, image: str, label: str, timeout: int, workdir: Path) -> None:
         self._workdir = workdir
+        self.name = name
+        self.image = image
+        self.label = label
+        self.timeout = timeout
         self.root_path: PurePath = workdir
         self.act_path: PurePath = workdir
         self.tool_cache_path: PurePath = workdir
         self.temp_path: PurePath = workdir
+        self._workdir.mkdir(exist_ok=True)
 
     def _real_path(self, target: PurePath) -> Path:
         return self._workdir / target.relative_to("/") if target.is_absolute() else Path(target)
 
-    def create(self) -> None:
-        self._workdir.mkdir(exist_ok=True)
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        image: str,
+        label: str,
+        capabilities: tuple[list[str], list[str]],
+        options: dict[str, str],
+        timeout: int,
+        workdir: Path,
+    ) -> "YunohostCIRunner":
+        return YunohostCIRunner(name, image, label, timeout, workdir)
 
     def cleanup(self) -> None:
         # shutil.rmtree(self.workdir)

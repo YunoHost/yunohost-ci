@@ -39,8 +39,9 @@ lint.ignore = [
     "LOG015",   # Use of root logger
     # "PLR0911",  # too-many-return-statements
     # "PLR0912",  # too-many-branches
-    # "PLR0913",  # too-many-arguments
+    "PLR0913",  # too-many-arguments
     # "PLR0915",  # too-many-statements
+    "PLR0917",  # too-many-positional-arguments
     # "PLR2004",  # magic-value-comparison
     # "PLW0603",  # Using globals
     # "RUF010",   # f-string explicit conversion flag
