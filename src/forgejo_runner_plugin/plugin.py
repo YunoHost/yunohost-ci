@@ -4,7 +4,6 @@ import logging
 import shutil
 import tarfile
 from collections.abc import Generator, Iterator
-from concurrent import futures
 from pathlib import Path, PurePath
 from typing import Protocol, override
 
@@ -197,8 +196,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         yield plugin_pb2.ExecOutput(exec_complete=complete)
 
 
-def init_server(name: str, tempdir: Path, runner_class: type[ForgejoActionRunner]) -> grpc.Server:
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+def init_grpc_server(server: grpc.Server, plugin: ForgejoPlugin) -> grpc.Server:
     health_pb2_grpc.add_HealthServicer_to_server(Health(), server)
-    plugin_pb2_grpc.add_BackendPluginServicer_to_server(ForgejoPlugin(name, tempdir, runner_class), server)
+    plugin_pb2_grpc.add_BackendPluginServicer_to_server(plugin, server)
     return server
