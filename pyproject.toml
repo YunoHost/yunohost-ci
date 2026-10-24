@@ -11,6 +11,7 @@ dependencies = [
     "httpx2",
     "grpcio",
     "grpcio-tools",
+    "pyyaml",
 ]
 
 
@@ -35,7 +36,7 @@ lint.ignore = [
     "ERA001",   # Commented-out code
     "EXE001",   # Shebangs
     "FIX001",   # Fixmes
-    # "G004",     # Logging statement uses f-string
+    "G004",     # Logging statement uses f-string
     "LOG015",   # Use of root logger
     # "PLR0911",  # too-many-return-statements
     # "PLR0912",  # too-many-branches
@@ -47,7 +48,7 @@ lint.ignore = [
     # "RUF010",   # f-string explicit conversion flag
     # "S101",     # Use of `assert` detected
     # "S105",     # Possible hardcoded password
-    # "S603",     # `subprocess` call: check for execution of untrusted input
+    "S603",     # `subprocess` call: check for execution of untrusted input
     # "S607",     # Subprocess with partial path
     # "SIM108",   # Don't force ternary expressions
     "T201",     # `print` found
