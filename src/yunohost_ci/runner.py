@@ -2,6 +2,7 @@
 
 import logging
 import shlex
+import shutil
 from collections.abc import Generator
 from pathlib import Path, PurePath
 from typing import final
@@ -73,6 +74,7 @@ class YunohostCIRunner(ForgejoActionRunner):
         incus.instance_stop(self.instance_name)
         logger.info(f"Deleting container {self.instance_name}")
         incus.instance_delete(self.instance_name)
+        shutil.rmtree(self.workdir)
 
     def push(self, source: Path, target: PurePath) -> None:
         logger.info(f"Copying {source} to incus container {target}")
@@ -81,17 +83,17 @@ class YunohostCIRunner(ForgejoActionRunner):
                 msg = "Invalid usage: source and target shall have the same name if a directory."
                 raise RuntimeError(msg)
             target = target.parent
-        Incus().push_file(self.instance_name, source, str(target))
+        Incus().push_file(self.instance_name, source, target)
 
     def pull(self, source: PurePath, target: Path) -> None:
         logger.info(f"Copying {target} from incus container {target}")
         target.parent.mkdir(exist_ok=True)
-        Incus().pull_file(self.instance_name, str(source), target)
+        Incus().pull_file(self.instance_name, source, target)
 
     def exec(
         self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
     ) -> Generator[tuple[bytes, bytes], None, int]:
         logger.debug(f"Executing {shlex.join(command)}...")
-        Incus().create_file(self.instance_name, str(workdir), directory=True, user=user, parents=True)
-        result = yield from Incus().execute(self.instance_name, *command, user=user, cwd=str(workdir), env=env)
+        Incus().create_file(self.instance_name, workdir, directory=True, user=user, parents=True)
+        result = yield from Incus().execute(self.instance_name, *command, user=user, cwd=workdir, env=env)
         return result

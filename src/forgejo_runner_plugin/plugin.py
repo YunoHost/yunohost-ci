@@ -68,7 +68,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
     @override
     def Create(self, request: plugin_pb2.CreateRequest, context: grpc.ServicerContext) -> plugin_pb2.CreateResponse:
         logger.debug("Plugin Create called")
-        env_id = f"{request.image}-{request.name}"
+        env_id = f"{request.image.replace('/', '_')}-{request.name}"
         runner = self.runner_class.create(
             request.name,
             request.image,
@@ -146,14 +146,13 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         self, request: plugin_pb2.CopyOutRequest, context: grpc.ServicerContext
     ) -> Iterator[plugin_pb2.CopyOutChunk]:
         logger.debug("Plugin CopyOut called")
-        env_id = request.environment_id
-        path = request.src_path
+        source = PurePath(request.src_path)
         runner = self._ensure_runner(request.environment_id)
-        temp_dest_dir = self.tempdir / f"{env_id}.pull"
-        temp_tar_file = self.tempdir / f"{env_id}.pull.tar"
+        temp_dest_dir = runner.workdir / "pull" / source.name
+        temp_tar_file = runner.workdir / "pull" / f"{source.name}.tar"
 
         temp_dest_dir.mkdir(exist_ok=True)
-        runner.pull(PurePath(path), temp_dest_dir)
+        runner.pull(source, temp_dest_dir)
 
         with tarfile.open(temp_tar_file, "w") as tar:
             tar.add(temp_dest_dir, arcname=temp_dest_dir.name)

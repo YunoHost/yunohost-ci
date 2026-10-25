@@ -86,18 +86,18 @@ class Incus:
     def launch(self, image_name: str, instance_name: str, *args: str) -> None:
         self._run("launch", image_name, instance_name, *args)
 
-    def push_file(self, instance_name: str, source: Path, target: str) -> None:
+    def push_file(self, instance_name: str, source: Path, target: PurePath) -> None:
         self._run("file", "push", "-pr", str(source), f"{instance_name}{target}")
         os.sync()
 
-    def pull_file(self, instance_name: str, source: str, target: Path) -> None:
+    def pull_file(self, instance_name: str, source: PurePath, target: Path) -> None:
         self._run("file", "pull", "-pr", f"{instance_name}{source}", str(target))
         os.sync()
 
     def create_file(
         self,
         instance_name: str,
-        path: str,
+        path: PurePath,
         *,
         directory: bool = False,
         user: str | None = None,
@@ -109,9 +109,7 @@ class Incus:
         type_args = ["--type", "directory" if directory else "file"]
 
         if parents:
-            self._run(
-                "file", "create", f"{instance_name}{PurePath(path).parent}", "--type", "directory", "--create-dirs"
-            )
+            self._run("file", "create", f"{instance_name}{path.parent}", "--type", "directory", "--create-dirs")
         # do not use --create-dirs to avoid user having permissions on parent dirs
         self._run("file", "create", f"{instance_name}{path}", *user_args, *group_args, *type_args)
 
@@ -120,11 +118,11 @@ class Incus:
         instance_name: str,
         *args: str,
         user: str | None = None,
-        cwd: str | None = None,
+        cwd: PurePath | None = None,
         env: dict[str, str] | None = None,
     ) -> Generator[tuple[bytes, bytes], None, int]:
         user_args = ["--user", user] if user else []
-        cwd_args = ["--cwd", cwd] if cwd else []
+        cwd_args = ["--cwd", str(cwd)] if cwd else []
         env_args: list[str] = []
         for key, val in env.items() if env else {}:
             env_args.extend(["--env", f"{key}={val}"])
