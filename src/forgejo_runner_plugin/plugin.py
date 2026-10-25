@@ -3,53 +3,21 @@
 import logging
 import shutil
 import tarfile
-from abc import abstractmethod
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 from pathlib import Path, PurePath
-from typing import Protocol, override
+from typing import override
 
 import grpc
 
 from .generator import GeneratorWrapper
 from .protos import health_pb2, health_pb2_grpc, plugin_pb2, plugin_pb2_grpc
+from .runner import ForgejoActionRunner
 
 
-class ForgejoActionRunner(Protocol):
-    workdir: Path
-    root_path: PurePath
-    act_path: PurePath
-    tool_cache_path: PurePath
-    temp_path: PurePath
+def chunk(data: bytes, *, stderr: bool = False) -> plugin_pb2.DataChunk:
+    stream = plugin_pb2.DataChunk.Stream.STDERR if stderr else plugin_pb2.DataChunk.Stream.STDOUT
+    return plugin_pb2.DataChunk(data=data, stream=stream)
 
-    @classmethod
-    @abstractmethod
-    def create(
-        cls,
-        name: str,
-        image: str,
-        label: str,
-        capabilities: tuple[list[str], list[str]],
-        options: dict[str, str],
-        timeout: int,
-        workdir: Path,
-    ) -> "ForgejoActionRunner": ...
-
-    @abstractmethod
-    def cleanup(self) -> None: ...
-
-    @abstractmethod
-    def start(self) -> Generator[str, None, int]: ...
-
-    @abstractmethod
-    def push(self, source: Path, target: PurePath) -> None: ...
-
-    @abstractmethod
-    def pull(self, source: PurePath, target: Path) -> None: ...
-
-    @abstractmethod
-    def exec(
-        self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
-    ) -> Generator[tuple[str, str], None, int]: ...
 
 
 class Health(health_pb2_grpc.HealthServicer):
@@ -60,19 +28,19 @@ class Health(health_pb2_grpc.HealthServicer):
         logging.debug("health_pb2.Health Check requested")
         return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.ServingStatus.SERVING)
 
-    @override
-    def List(
-        self, request: health_pb2.HealthListRequest, context: grpc.ServicerContext
-    ) -> health_pb2.HealthListResponse:
-        logging.debug("health_pb2.Health List requested")
-        return health_pb2.HealthListResponse()
+    # @override
+    # def List(
+    #     self, request: health_pb2.HealthListRequest, context: grpc.ServicerContext
+    # ) -> health_pb2.HealthListResponse:
+    #     logging.debug("health_pb2.Health List requested")
+    #     return health_pb2.HealthListResponse()
 
     # @override
     # def Watch(
     #     self, request: health_pb2.HealthCheckRequest, context: grpc.ServicerContext
-    # ) -> health_pb2.HealthCheckResponse:
+    # ) -> Iterator[health_pb2.HealthCheckResponse]:
     #     logging.debug("health_pb2.Health Watch requested")
-    #     pass
+    #     yield self.Check(request, context)
 
 
 class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
@@ -88,10 +56,6 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
             msg = f"Could not find environment '{environment_id}'"
             raise RuntimeError(msg)
         return self.environments[environment_id]
-
-    def _sendline(self, line: str, *, stderr: bool = False) -> plugin_pb2.DataChunk:
-        stream = plugin_pb2.DataChunk.Stream.STDERR if stderr else plugin_pb2.DataChunk.Stream.STDOUT
-        return plugin_pb2.DataChunk(data=line.encode(), stream=stream)
 
     @override
     def Capabilities(
@@ -144,7 +108,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         runner = self._ensure_runner(request.environment_id)
         start_log = GeneratorWrapper(runner.start())
         for line in start_log:
-            yield plugin_pb2.StartOutput(data=self._sendline(line))
+            yield plugin_pb2.StartOutput(data=chunk(line))
         yield plugin_pb2.StartOutput(start_complete=plugin_pb2.StartComplete(image_env={}))
 
     @override
@@ -220,9 +184,9 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
         for stdout, stderr in exec_log:
             if stdout:
-                yield plugin_pb2.ExecOutput(data=self._sendline(stdout, stderr=False))
+                yield plugin_pb2.ExecOutput(data=chunk(stdout, stderr=False))
             if stderr:
-                yield plugin_pb2.ExecOutput(data=self._sendline(stderr, stderr=True))
+                yield plugin_pb2.ExecOutput(data=chunk(stderr, stderr=True))
 
         returncode = exec_log.returned
         complete = plugin_pb2.ExecComplete(exit_code=returncode)
