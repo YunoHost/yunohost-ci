@@ -15,6 +15,7 @@ from .protos import health_pb2, health_pb2_grpc, plugin_pb2, plugin_pb2_grpc
 
 
 class ForgejoActionRunner(Protocol):
+    workdir: Path
     root_path: PurePath
     act_path: PurePath
     tool_cache_path: PurePath
@@ -111,7 +112,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
             (list(request.cap_add), list(request.cap_drop)),
             dict(request.backend_options),
             request.environment_timeout.seconds,
-            self.tempdir / f"{env_id}.workdir",
+            self.tempdir / env_id,
         )
         self.environments[env_id] = runner
 
@@ -153,11 +154,11 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         logging.debug("Plugin CopyIn called")
         # First iterator describes the environment
         request = next(request_iterator)
-        env_id = request.environment_id
-        path = request.dest_path
+        target = PurePath(request.dest_path)
         runner = self._ensure_runner(request.environment_id)
-        temp_dest_dir = self.tempdir / f"{env_id}.push"
-        temp_tar_file = self.tempdir / f"{env_id}.push.tar"
+        temp_target = runner.workdir / "push" / target.name
+        temp_tar_file = runner.workdir / "push" / f"{target.name}.tar"
+        temp_target.parent.mkdir(exist_ok=True)
 
         with temp_tar_file.open("wb") as tar:
             for request in request_iterator:
@@ -165,11 +166,14 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
         # FIXME: extract in container?
         with tarfile.open(temp_tar_file, "r") as tar:
-            tar.extractall(temp_dest_dir, filter="data")
+            tar.extractall(temp_target, filter="data")
         temp_tar_file.unlink()
 
-        runner.push(temp_dest_dir, PurePath(path))
-        shutil.rmtree(temp_dest_dir)
+        runner.push(temp_target, PurePath(target))
+        if temp_target.is_dir():
+            shutil.rmtree(temp_target)
+        else:
+            temp_target.unlink()
 
         return plugin_pb2.CopyInResponse()
 

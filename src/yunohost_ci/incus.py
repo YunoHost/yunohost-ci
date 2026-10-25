@@ -3,8 +3,9 @@
 import logging
 import os
 import platform
+import selectors
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any, Generator
 
 import yaml
@@ -27,34 +28,56 @@ class Incus:
 
     def _run(self, *args: str, **kwargs: Any) -> str:
         command = ["incus", *args]
+        print(command)
         result: bytes = subprocess.check_output(command, **kwargs)
         return result.decode("utf-8")
 
     def _run_logged_prefixed(self, *args: str, prefix: str = "", **kwargs: Any) -> None:
         command = ["incus", *args]
 
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
-        assert process.stdout is not None
-        with process.stdout:
-            for line in iter(process.stdout.readline, b""):  # b'\n'-separated lines
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
+        assert proc.stdout is not None
+        with proc.stdout:
+            for line in iter(proc.stdout.readline, b""):  # b'\n'-separated lines
                 logging.debug("%s%s", prefix, line.decode("utf-8").rstrip("\n"))
-        exitcode = process.wait()  # 0 means success
+        exitcode = proc.wait()  # 0 means success
         if exitcode:
             msg = f"Could not run {' '.join(command)}"
             raise RuntimeError(msg)
 
     def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[str, str], None, int]:
         command = ["incus", *args]
+        print(command)
 
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False, **kwargs)
-        while proc.poll() is None:
-            assert proc.stdout is not None
-            assert proc.stderr is not None
+        assert proc.stdout is not None
+        assert proc.stderr is not None
+        sel = selectors.DefaultSelector()
+        sel.register(proc.stdout, selectors.EVENT_READ)
+        sel.register(proc.stderr, selectors.EVENT_READ)
+
+        eof = False
+        while not eof:
             out, err = "", ""
-            while (newout := proc.stdout.read1()) is not None and (newerr := proc.stderr.read1()) is not None:
+            for key, _ in sel.select():
+                data = key.fileobj.read1().decode()
+                if not data:
+                    eof = True
+                    break
+                if key.fileobj is proc.stdout:
+                    out += data
+                else:
+                    err += data
+            yield out, err
+
+        while proc.poll() is None:
+            out, err = "", ""
+            while (newout := proc.stdout.read(1)) is not None and (newerr := proc.stderr.read(1)) is not None:
                 out += newout
                 err += newerr
                 if "\n" in newout or "\n" in newerr:
+                    print(out)
+                    print(err)
                     break
             yield (out, err)
 
@@ -91,6 +114,25 @@ class Incus:
         self._run("file", "pull", "-pr", f"{instance_name}{source}", str(target))
         os.sync()
 
+    def create_file(
+        self,
+        instance_name: str,
+        path: str,
+        *,
+        directory: bool = False,
+        user: str | None = None,
+        group: str | None = None,
+        parents: bool = False,
+    ) -> None:
+        user_args = ["--uid", user] if user else []
+        group_args = ["--gid", group] if group else []
+        type_args = ["--type", "directory" if directory else "file"]
+
+        if parents:
+            self._run("file", "create", f"{instance_name}{PurePath(path).parent}", "--type", "directory", "--create-dirs")
+        # do not use --create-dirs to avoid user having permissions on parent dirs
+        self._run("file", "create", f"{instance_name}{path}", *user_args, *group_args, *type_args)
+
     def execute(
         self,
         instance_name: str,
@@ -121,8 +163,11 @@ class Incus:
         image_aliases = [alias["name"] for image in res for alias in image["aliases"]]
         return alias in image_aliases
 
-    def image_info(self, image_alias: str) -> dict[str, Any]:
-        res = yaml.safe_load(self._run("image", "info", image_alias))
+    def image_info(self, image_alias: str) -> dict[str, Any] | None:
+        try:
+            res = yaml.safe_load(self._run("image", "info", image_alias))
+        except subprocess.CalledProcessError:
+            return None
         return res
 
     def image_alias_exists(self, alias: str) -> bool:
