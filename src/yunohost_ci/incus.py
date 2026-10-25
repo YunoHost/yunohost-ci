@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import logging
+import io
 import os
 import platform
 import selectors
 import subprocess
+from collections.abc import Generator
 from pathlib import Path, PurePath
-from typing import Any, Generator
+from typing import Any, cast
 
 import yaml
 
@@ -26,42 +27,30 @@ class Incus:
         msg = f"Unknown platform {plat}!"
         raise RuntimeError(msg)
 
-    def _run(self, *args: str, **kwargs: Any) -> str:
+    def _run(self, *args: str, **kwargs: Any) -> str:  # noqa: ANN401
         command = ["incus", *args]
         print(command)
         result: bytes = subprocess.check_output(command, **kwargs)
         return result.decode("utf-8")
 
-    def _run_logged_prefixed(self, *args: str, prefix: str = "", **kwargs: Any) -> None:
-        command = ["incus", *args]
-
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs)
-        assert proc.stdout is not None
-        with proc.stdout:
-            for line in iter(proc.stdout.readline, b""):  # b'\n'-separated lines
-                logging.debug("%s%s", prefix, line.decode("utf-8").rstrip("\n"))
-        exitcode = proc.wait()  # 0 means success
-        if exitcode:
-            msg = f"Could not run {' '.join(command)}"
-            raise RuntimeError(msg)
-
-    def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[bytes, bytes], None, int]:
+    def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[bytes, bytes], None, int]:  # noqa: ANN401
         command = ["incus", *args]
         print(command)
 
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False, **kwargs)
-        assert proc.stdout is not None
-        assert proc.stderr is not None
+        out = cast("io.BytesIO", proc.stdout)
+        err = cast("io.BytesIO", proc.stderr)
         sel = selectors.DefaultSelector()
-        sel.register(proc.stdout, selectors.EVENT_READ)
-        sel.register(proc.stderr, selectors.EVENT_READ)
+        sel.register(out, selectors.EVENT_READ)
+        sel.register(err, selectors.EVENT_READ)
 
         while proc.poll() is None:
             out, err = b"", b""
             for key, _ in sel.select():
-                if not (data := key.fileobj.read1()):
+                file = cast("io.BytesIO", key.fileobj)
+                if not (data := file.read1()):
                     break
-                if key.fileobj is proc.stdout:
+                if file is out:
                     out += data
                 else:
                     err += data
@@ -70,7 +59,9 @@ class Incus:
         return proc.returncode
 
     def instance_stopped(self, name: str) -> bool:
-        assert self.instance_exists(name)
+        if not self.instance_exists(name):
+            msg = f"Trying to check status of non existing instance {name}"
+            raise RuntimeError(msg)
         res = yaml.safe_load(self._run("info", name))
         return str(res["Status"]) == "STOPPED"
 

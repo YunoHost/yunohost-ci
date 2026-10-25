@@ -19,7 +19,6 @@ def chunk(data: bytes, *, stderr: bool = False) -> plugin_pb2.DataChunk:
     return plugin_pb2.DataChunk(data=data, stream=stream)
 
 
-
 class Health(health_pb2_grpc.HealthServicer):
     @override
     def Check(

@@ -38,8 +38,8 @@ class YunohostCIRunner(ForgejoActionRunner):
         name: str,
         image: str,
         label: str,
-        capabilities: tuple[list[str], list[str]],
-        options: dict[str, str],
+        capabilities: tuple[list[str], list[str]],  # noqa: ARG003
+        options: dict[str, str],  # noqa: ARG003
         timeout: int,
         workdir: Path,
     ) -> "YunohostCIRunner":
@@ -53,7 +53,7 @@ class YunohostCIRunner(ForgejoActionRunner):
             logging.info(f"Starting container {self.instance_name} from {self.image_name}...")
             base_hash = incus.image_info(remote_image)["Fingerprint"]
             args = ["-c", "security.privileged=true", "-c", "security.nesting=true"]
-            incus.launch(remote_image, self.instance_name, *args)
+            incus.launch(base_hash, self.instance_name, *args)
 
         if incus.instance_stopped(self.instance_name):
             incus.instance_start(self.instance_name)
@@ -61,14 +61,16 @@ class YunohostCIRunner(ForgejoActionRunner):
 
     def cleanup(self) -> None:
         incus = Incus()
-        # incus.instance_stop(self.instance_name)
+        incus.instance_stop(self.instance_name)
         logging.info(f"Deleting container {self.instance_name}")
-        # incus.instance_delete(self.instance_name)
+        incus.instance_delete(self.instance_name)
 
     def push(self, source: Path, target: PurePath) -> None:
         print(f"Copying {source} to incus container {target}")
         if source.is_dir():
-            assert source.name == target.name
+            if source.name != target.name:
+                msg = "Invalid usage: source and target shall have the same name if a directory."
+                raise RuntimeError(msg)
             target = target.parent
 
         Incus().push_file(self.instance_name, source, str(target))
