@@ -51,7 +51,11 @@ class YunohostCIRunner(ForgejoActionRunner):
         if not incus.instance_exists(self.instance_name):
             remote_image = "yunohost:" + self.image_name
             logging.info(f"Starting container {self.instance_name} from {self.image_name}...")
-            base_hash = incus.image_info(remote_image)["Fingerprint"]
+            info = incus.image_info(remote_image)
+            if info is None:
+                msg = f"Could not start: image not found: {remote_image}"
+                raise RuntimeError(msg)
+            base_hash = info["Fingerprint"]
             args = ["-c", "security.privileged=true", "-c", "security.nesting=true"]
             incus.launch(base_hash, self.instance_name, *args)
 
