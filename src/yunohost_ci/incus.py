@@ -45,7 +45,7 @@ class Incus:
             msg = f"Could not run {' '.join(command)}"
             raise RuntimeError(msg)
 
-    def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[str, str], None, int]:
+    def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[bytes, bytes], None, int]:
         command = ["incus", *args]
         print(command)
 
@@ -56,13 +56,10 @@ class Incus:
         sel.register(proc.stdout, selectors.EVENT_READ)
         sel.register(proc.stderr, selectors.EVENT_READ)
 
-        eof = False
-        while not eof:
-            out, err = "", ""
+        while proc.poll() is None:
+            out, err = b"", b""
             for key, _ in sel.select():
-                data = key.fileobj.read1().decode()
-                if not data:
-                    eof = True
+                if not (data := key.fileobj.read1()):
                     break
                 if key.fileobj is proc.stdout:
                     out += data
@@ -70,18 +67,6 @@ class Incus:
                     err += data
             yield out, err
 
-        while proc.poll() is None:
-            out, err = "", ""
-            while (newout := proc.stdout.read(1)) is not None and (newerr := proc.stderr.read(1)) is not None:
-                out += newout
-                err += newerr
-                if "\n" in newout or "\n" in newerr:
-                    print(out)
-                    print(err)
-                    break
-            yield (out, err)
-
-            proc.communicate(timeout=10)
         return proc.returncode
 
     def instance_stopped(self, name: str) -> bool:
@@ -129,7 +114,9 @@ class Incus:
         type_args = ["--type", "directory" if directory else "file"]
 
         if parents:
-            self._run("file", "create", f"{instance_name}{PurePath(path).parent}", "--type", "directory", "--create-dirs")
+            self._run(
+                "file", "create", f"{instance_name}{PurePath(path).parent}", "--type", "directory", "--create-dirs"
+            )
         # do not use --create-dirs to avoid user having permissions on parent dirs
         self._run("file", "create", f"{instance_name}{path}", *user_args, *group_args, *type_args)
 
@@ -140,7 +127,7 @@ class Incus:
         user: str | None = None,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-    ) -> Generator[tuple[str, str], None, int]:
+    ) -> Generator[tuple[bytes, bytes], None, int]:
         user_args = ["--user", user] if user else []
         cwd_args = ["--cwd", cwd] if cwd else []
         env_args: list[str] = []

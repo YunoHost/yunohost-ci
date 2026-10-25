@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-import shutil
-import subprocess
 from collections.abc import Generator
 from pathlib import Path, PurePath
 from typing import final
@@ -47,8 +45,8 @@ class YunohostCIRunner(ForgejoActionRunner):
     ) -> "YunohostCIRunner":
         return YunohostCIRunner(name, image, label, timeout, workdir)
 
-    def start(self) -> Generator[str, None, int]:
-        yield f"Starting container {self.instance_name}...\n"
+    def start(self) -> Generator[bytes, None, int]:
+        yield f"Starting container {self.instance_name}...\n".encode()
         incus = Incus()
         if not incus.instance_exists(self.instance_name):
             remote_image = "yunohost:" + self.image_name
@@ -89,7 +87,7 @@ class YunohostCIRunner(ForgejoActionRunner):
 
     def exec(
         self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
-    ) -> Generator[tuple[str, str], None, int]:
+    ) -> Generator[tuple[bytes, bytes], None, int]:
         print(f"executing {command}...")
         Incus().create_file(self.instance_name, str(workdir), directory=True, user=user, parents=True)
         result = yield from Incus().execute(self.instance_name, *command, user=user, cwd=str(workdir), env=env)
