@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 
 import io
+import logging
 import os
 import platform
 import selectors
+import shlex
 import subprocess
 from collections.abc import Generator
 from pathlib import Path, PurePath
 from typing import Any, cast
 
 import yaml
+
+logger = logging.getLogger("incus")
 
 
 class Incus:
@@ -29,13 +33,13 @@ class Incus:
 
     def _run(self, *args: str, **kwargs: Any) -> str:  # noqa: ANN401
         command = ["incus", *args]
-        print(command)
+        logger.debug(f"Running: {shlex.join(command)}")
         result: bytes = subprocess.check_output(command, **kwargs)
         return result.decode("utf-8")
 
     def _run_yielding(self, *args: str, **kwargs: Any) -> Generator[tuple[bytes, bytes], None, int]:  # noqa: ANN401
         command = ["incus", *args]
-        print(command)
+        logger.debug(f"Running: {shlex.join(command)}")
 
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False, **kwargs)
         out = cast("io.BytesIO", proc.stdout)

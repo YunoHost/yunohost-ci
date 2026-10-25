@@ -13,6 +13,8 @@ from .generator import GeneratorWrapper
 from .protos import health_pb2, health_pb2_grpc, plugin_pb2, plugin_pb2_grpc
 from .runner import ForgejoActionRunner
 
+logger = logging.getLogger("forgejo_plugin")
+
 
 def chunk(data: bytes, *, stderr: bool = False) -> plugin_pb2.DataChunk:
     stream = plugin_pb2.DataChunk.Stream.STDERR if stderr else plugin_pb2.DataChunk.Stream.STDOUT
@@ -24,21 +26,21 @@ class Health(health_pb2_grpc.HealthServicer):
     def Check(
         self, request: health_pb2.HealthCheckRequest, context: grpc.ServicerContext
     ) -> health_pb2.HealthCheckResponse:
-        logging.debug("health_pb2.Health Check requested")
+        logger.debug("health_pb2.Health Check requested")
         return health_pb2.HealthCheckResponse(status=health_pb2.HealthCheckResponse.ServingStatus.SERVING)
 
     # @override
     # def List(
     #     self, request: health_pb2.HealthListRequest, context: grpc.ServicerContext
     # ) -> health_pb2.HealthListResponse:
-    #     logging.debug("health_pb2.Health List requested")
+    #     logger.debug("health_pb2.Health List requested")
     #     return health_pb2.HealthListResponse()
 
     # @override
     # def Watch(
     #     self, request: health_pb2.HealthCheckRequest, context: grpc.ServicerContext
     # ) -> Iterator[health_pb2.HealthCheckResponse]:
-    #     logging.debug("health_pb2.Health Watch requested")
+    #     logger.debug("health_pb2.Health Watch requested")
     #     yield self.Check(request, context)
 
 
@@ -60,13 +62,12 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
     def Capabilities(
         self, request: plugin_pb2.CapabilitiesRequest, context: grpc.ServicerContext
     ) -> plugin_pb2.CapabilitiesResponse:
-        logging.debug("Plugin Capabilities called")
+        logger.debug("Plugin Capabilities called")
         return plugin_pb2.CapabilitiesResponse(name=self.name)
 
     @override
     def Create(self, request: plugin_pb2.CreateRequest, context: grpc.ServicerContext) -> plugin_pb2.CreateResponse:
-        logging.debug("Plugin Create called")
-        print(request)
+        logger.debug("Plugin Create called")
         env_id = f"{request.image}-{request.name}"
         runner = self.runner_class.create(
             request.name,
@@ -92,7 +93,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
     @override
     def Remove(self, request: plugin_pb2.RemoveRequest, context: grpc.ServicerContext) -> plugin_pb2.RemoveResponse:
-        logging.debug("Plugin Remove called")
+        logger.debug("Plugin Remove called")
         self._ensure_runner(request.environment_id)
         self.environments.pop(request.environment_id).cleanup()
         return plugin_pb2.RemoveResponse()
@@ -101,7 +102,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
     def Start(
         self, request: plugin_pb2.StartRequest, context: grpc.ServicerContext
     ) -> Iterator[plugin_pb2.StartOutput]:
-        logging.debug("Plugin Start called")
+        logger.debug("Plugin Start called")
         # yield plugin_pb2.StartOutput(data=plugin_pb2.DataChunk(b"toto this is a log line"))
 
         runner = self._ensure_runner(request.environment_id)
@@ -114,7 +115,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
     def CopyIn(
         self, request_iterator: Iterator[plugin_pb2.CopyInChunk], context: grpc.ServicerContext
     ) -> plugin_pb2.CopyInResponse:
-        logging.debug("Plugin CopyIn called")
+        logger.debug("Plugin CopyIn called")
         # First iterator describes the environment
         request = next(request_iterator)
         target = PurePath(request.dest_path)
@@ -144,7 +145,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
     def CopyOut(
         self, request: plugin_pb2.CopyOutRequest, context: grpc.ServicerContext
     ) -> Iterator[plugin_pb2.CopyOutChunk]:
-        logging.debug("Plugin CopyOut called")
+        logger.debug("Plugin CopyOut called")
         env_id = request.environment_id
         path = request.src_path
         runner = self._ensure_runner(request.environment_id)
@@ -165,7 +166,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
     @override
     def Exec(self, request: plugin_pb2.ExecRequest, context: grpc.ServicerContext) -> Iterator[plugin_pb2.ExecOutput]:
-        logging.debug("Plugin Exec called")
+        logger.debug("Plugin Exec called")
         runner = self._ensure_runner(request.environment_id)
 
         try:

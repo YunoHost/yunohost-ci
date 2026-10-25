@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import shlex
 from collections.abc import Generator
 from pathlib import Path, PurePath
 from typing import final
@@ -8,6 +9,8 @@ from typing import final
 from forgejo_runner_plugin import ForgejoActionRunner
 
 from .incus import Incus
+
+logger = logging.getLogger("yunohost-ci")
 
 
 @final
@@ -46,11 +49,13 @@ class YunohostCIRunner(ForgejoActionRunner):
         return YunohostCIRunner(name, image, label, timeout, workdir)
 
     def start(self) -> Generator[bytes, None, int]:
-        yield f"Starting container {self.instance_name}...\n".encode()
+        msg = f"Starting container {self.instance_name}..."
+        logger.info(msg)
+        yield f"{msg}\n".encode()
         incus = Incus()
         if not incus.instance_exists(self.instance_name):
             remote_image = "yunohost:" + self.image_name
-            logging.info(f"Starting container {self.instance_name} from {self.image_name}...")
+            logger.info(f"Starting container {self.instance_name} from {self.image_name}...")
             info = incus.image_info(remote_image)
             if info is None:
                 msg = f"Could not start: image not found: {remote_image}"
@@ -66,35 +71,27 @@ class YunohostCIRunner(ForgejoActionRunner):
     def cleanup(self) -> None:
         incus = Incus()
         incus.instance_stop(self.instance_name)
-        logging.info(f"Deleting container {self.instance_name}")
+        logger.info(f"Deleting container {self.instance_name}")
         incus.instance_delete(self.instance_name)
 
     def push(self, source: Path, target: PurePath) -> None:
-        print(f"Copying {source} to incus container {target}")
+        logger.info(f"Copying {source} to incus container {target}")
         if source.is_dir():
             if source.name != target.name:
                 msg = "Invalid usage: source and target shall have the same name if a directory."
                 raise RuntimeError(msg)
             target = target.parent
-
         Incus().push_file(self.instance_name, source, str(target))
-        # real_target = self._real_path(target)
-        # real_target.parent.mkdir(exist_ok=True)
 
     def pull(self, source: PurePath, target: Path) -> None:
+        logger.info(f"Copying {target} from incus container {target}")
         target.parent.mkdir(exist_ok=True)
         Incus().pull_file(self.instance_name, str(source), target)
-        # real_source = self._real_path(source)
-        # real_source.parent.mkdir(exist_ok=True)
-        # if real_source.is_dir():
-        #     shutil.copytree(real_source, target)
-        # else:
-        #     shutil.copy(real_source, target)
 
     def exec(
         self, command: list[str], *, user: str, workdir: PurePath, env: dict[str, str]
     ) -> Generator[tuple[bytes, bytes], None, int]:
-        print(f"executing {command}...")
+        logger.debug(f"Executing {shlex.join(command)}...")
         Incus().create_file(self.instance_name, str(workdir), directory=True, user=user, parents=True)
         result = yield from Incus().execute(self.instance_name, *command, user=user, cwd=str(workdir), env=env)
         return result

@@ -22,6 +22,9 @@ def main() -> None:
 
     tempdir.mkdir(exist_ok=True)
 
+    logging.basicConfig()
+    logging.getLogger("forgejo_plugin").setLevel(logging.INFO)
+    logging.getLogger("incus").setLevel(logging.INFO)
     logging.getLogger().setLevel(logging.DEBUG)
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
