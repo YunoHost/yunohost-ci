@@ -27,7 +27,20 @@ def main() -> None:
     logging.getLogger("incus").setLevel(logging.INFO)
     logging.getLogger().setLevel(logging.DEBUG)
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    duration_10h = 1000*60*60*10
+
+    server_options = [
+        # ("grpc.keepalive_time_ms", 20000),
+        # ("grpc.keepalive_timeout_ms", 10000),
+        # ("grpc.http2.min_ping_interval_without_data_ms", 5000),
+        ("grpc.max_connection_idle_ms", duration_10h),
+        ("grpc.max_connection_age_ms", duration_10h),
+        ("grpc.max_connection_age_grace_ms", duration_10h),
+        ("grpc.http2.max_pings_without_data", duration_10h),
+        ("grpc.keepalive_permit_without_calls", duration_10h),
+    ]
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), options=server_options)
     plugin = ForgejoPlugin("yunohost-ci", tempdir=tempdir, runner_class=YunohostCIRunner)
     init_grpc_server(server, plugin)
     server.add_insecure_port(f"[::]:{args.port}")
