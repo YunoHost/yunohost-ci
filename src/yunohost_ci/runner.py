@@ -91,7 +91,7 @@ class YunohostCIRunner(ForgejoActionRunner):
         shutil.rmtree(self.workdir)
 
     def push(self, source: Path, target: PurePath) -> None:
-        logger.info(f"Copying {source} to incus container {target}")
+        logger.info(f"Pushing {target} to incus container...")
         if source.is_dir():
             if source.name != target.name:
                 msg = "Invalid usage: source and target shall have the same name if a directory."
@@ -100,7 +100,7 @@ class YunohostCIRunner(ForgejoActionRunner):
         Incus().push_file(self.instance_name, source, target)
 
     def pull(self, source: PurePath, target: Path) -> None:
-        logger.info(f"Copying {target} from incus container {target}")
+        logger.info(f"Pulling {source} from incus container...")
         target.parent.mkdir(exist_ok=True)
         Incus().pull_file(self.instance_name, source, target)
 

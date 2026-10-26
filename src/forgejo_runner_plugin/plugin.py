@@ -67,7 +67,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
 
     @override
     def Create(self, request: plugin_pb2.CreateRequest, context: grpc.ServicerContext) -> plugin_pb2.CreateResponse:
-        logger.debug("Plugin Create called")
+        logger.debug(f"Plugin Create called for {request.name}")
         env_id = f"{request.image.replace('/', '_')}-{request.name}"
         runner = self.runner_class.create(
             request.name,
