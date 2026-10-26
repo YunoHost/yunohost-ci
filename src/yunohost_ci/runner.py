@@ -69,15 +69,19 @@ class YunohostCIRunner(ForgejoActionRunner):
             incus.instance_start(self.instance_name)
 
         if not self.image_name.endswith("build-and-lint"):
-            self._fix_resolving()
+            for out, err in self._fix_resolving():
+                yield out + err
 
-    def _fix_resolving(self) -> None:
+    def _fix_resolving(self) -> Generator[tuple[bytes, bytes]]:
+        msg = f"Patching resolving for {self.instance_name}..."
+        logger.info(msg)
+        yield f"{msg}\n".encode(), b""
         incus = Incus()
-        incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf")
-        incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf")
-        incus.execute(self.instance_name, "sed", "-i", "s/#IGNORE/IGNORE/g", "/etc/default/dnsmasq")
-        incus.execute(self.instance_name, "systemctl", "restart", "dnsmasq")
-        incus.execute(self.instance_name, "journalctl", "-u", "dnsmasq", "-n", "100", "--no-pager")
+        yield from incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf")
+        yield from incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf")
+        yield from incus.execute(self.instance_name, "sed", "-i", "s/#IGNORE/IGNORE/g", "/etc/default/dnsmasq")
+        yield from incus.execute(self.instance_name, "systemctl", "restart", "dnsmasq")
+        yield from incus.execute(self.instance_name, "journalctl", "-u", "dnsmasq", "-n", "100", "--no-pager")
 
     def cleanup(self) -> None:
         incus = Incus()
