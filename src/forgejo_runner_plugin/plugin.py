@@ -155,7 +155,15 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         runner.pull(source, temp_dest_dir)
 
         with tarfile.open(temp_tar_file, "w") as tar:
-            tar.add(temp_dest_dir, arcname=temp_dest_dir.name)
+            # Check if it's a single file. Do not call len() for performance purposes
+            content = temp_dest_dir.iterdir()
+            has_one_file = next(content, None) is not None and next(content, None) is None
+            if has_one_file and (temp_dest_dir / source.name).exists():
+                tar_source = temp_dest_dir / source.name
+            else:
+                tar_source = temp_dest_dir
+            tar.add(tar_source, arcname=temp_dest_dir.name)
+
         shutil.rmtree(temp_dest_dir)
 
         with temp_tar_file.open("rb") as tar:
