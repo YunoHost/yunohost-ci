@@ -151,7 +151,7 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         temp_dest_dir = runner.workdir / "pull" / source.name
         temp_tar_file = runner.workdir / "pull" / f"{source.name}.tar"
 
-        temp_dest_dir.mkdir(exist_ok=True)
+        temp_dest_dir.mkdir(exist_ok=True, parents=True)
         runner.pull(source, temp_dest_dir)
 
         with tarfile.open(temp_tar_file, "w") as tar:
