@@ -67,7 +67,17 @@ class YunohostCIRunner(ForgejoActionRunner):
 
         if incus.instance_stopped(self.instance_name):
             incus.instance_start(self.instance_name)
-        return 0
+
+        if not self.image_name.endswith("build-and-lint"):
+            self._fix_resolving()
+
+    def _fix_resolving(self) -> None:
+        incus = Incus()
+        incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'resolv-file=/etc/resolv.dnsmasq.conf' > /etc/dnsmasq.d/resolvconf")
+        incus.execute(self.instance_name, "/bin/bash", "-c", "echo 'nameserver 8.8.8.8' > /etc/resolv.dnsmasq.conf")
+        incus.execute(self.instance_name, "sed", "-i", "s/#IGNORE/IGNORE/g", "/etc/default/dnsmasq")
+        incus.execute(self.instance_name, "systemctl", "restart", "dnsmasq")
+        incus.execute(self.instance_name, "journalctl", "-u", "dnsmasq", "-n", "100", "--no-pager")
 
     def cleanup(self) -> None:
         incus = Incus()
