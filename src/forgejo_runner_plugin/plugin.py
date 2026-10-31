@@ -148,23 +148,22 @@ class ForgejoPlugin(plugin_pb2_grpc.BackendPluginServicer):
         logger.debug("Plugin CopyOut called")
         source = PurePath(request.src_path)
         runner = self._ensure_runner(request.environment_id)
-        temp_dest_dir = runner.workdir / "pull" / source.name
+        temp_dest = runner.workdir / "pull" / source.name
         temp_tar_file = runner.workdir / "pull" / f"{source.name}.tar"
+        temp_dest.parent.mkdir(exist_ok=True)
 
-        temp_dest_dir.mkdir(exist_ok=True, parents=True)
-        runner.pull(source, temp_dest_dir)
+        temp_dest.mkdir(exist_ok=True, parents=True)
+        runner.pull(source, temp_dest)
 
         with tarfile.open(temp_tar_file, "w") as tar:
             # Check if it's a single file. Do not call len() for performance purposes
-            content = temp_dest_dir.iterdir()
+            content = temp_dest.iterdir()
             has_one_file = next(content, None) is not None and next(content, None) is None
-            if has_one_file and (temp_dest_dir / source.name).exists():
-                tar_source = temp_dest_dir / source.name
-            else:
-                tar_source = temp_dest_dir
-            tar.add(tar_source, arcname=temp_dest_dir.name)
+            source_file = temp_dest / source.name
+            tar_source = source_file if has_one_file and source_file.exists() else temp_dest
+            tar.add(tar_source, arcname=temp_dest.name)
 
-        shutil.rmtree(temp_dest_dir)
+        shutil.rmtree(temp_dest)
 
         with temp_tar_file.open("rb") as tar:
             while chunk := tar.read(4096):
