@@ -1,0 +1,75 @@
+name: Build a Debian package
+description: |
+  Build a debian package with debuild.
+  Optionally patch the version to incorporate the timestamp and
+  git commit sha (if the directory is in a git repository).
+
+inputs:
+  path:
+    description: Project path
+    required: true
+  outdir:
+    description: Output directory for the packages
+    required: true
+  unstable:
+    description: Patch the version with timestamp and git commit sha
+    required: false
+    default: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create build directory
+      shell: bash
+      run: |
+        rm -rf _build
+        mkdir -p _build
+        cp -R "${{ inputs.path }}" "_build/sources"
+
+    - name: Install build-deps
+      shell: bash
+      run: |
+        cd "_build/sources"
+        sudo apt update
+        sudo apt install devscripts
+        sudo apt --assume-yes -o Dpkg::Options::="--force-confold" build-dep .
+
+    - name: Set unstable version
+      if: ${{ inputs.unstable == 'true' }}
+      shell: bash
+      run: |
+        cd "_build/sources"
+        package=$(dpkg-parsechangelog -S Source)
+        version="$(dpkg-parsechangelog -S Version)"
+        version="${version}+$(date +%Y%m%d%H%M)"
+        if git rev-parse --is-inside-work-tree >/dev/null; then
+          version="${version}g$(git rev-parse --short HEAD)"
+        fi
+
+        dch \
+          --force-bad-version \
+          --package "$package" \
+          --newversion "$version" \
+          --distribution "unstable" \
+          --force-distribution "CI build"
+
+    - name: Build project
+      shell: bash
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        cd "_build/sources"
+        debuild --no-lintian -us -uc
+
+    - name: List build packages
+      shell: bash
+      run: |
+        packages=($(ls "_build"/*.deb))
+        echo "Built packages: ${packages[*]}"
+        mkdir -p "${{ inputs.outdir }}"
+        mv "${packages[@]}" "${{ inputs.outdir }}"
+
+    - name: Cleanup build directory
+      if: ${{ always() }}
+      shell: bash
+      run: rm -rf _build
