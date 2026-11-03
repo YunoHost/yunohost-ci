@@ -61,13 +61,13 @@ runs:
         cd "_build/sources"
         debuild --no-lintian -us -uc
 
-    - name: List build packages
+    - name: Move output files
       shell: bash
       run: |
-        packages=($(ls "_build"/*.deb))
-        echo "Built packages: ${packages[*]}"
+        readarray -d '' files < <(find "_build" -mindepth 1 -maxdepth 1 -not -name "sources" -print0)
+        echo "Generated files: ${files[*]}"
         mkdir -p "${{ inputs.outdir }}"
-        mv "${packages[@]}" "${{ inputs.outdir }}"
+        mv "${files[@]}" "${{ inputs.outdir }}"
 
     - name: Cleanup build directory
       if: ${{ always() }}
